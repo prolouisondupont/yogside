@@ -116,6 +116,20 @@ if (Astro.request.method === 'POST') {
     }
   }
 
+  if (action === 'lieu-supprimer' && UUID.test(id)) {
+    // Un lieu utilisé (même par des séances passées) est conservé pour l'historique
+    const [{ count: nbCours }, { count: nbWorkshops }] = await Promise.all([
+      supabase.from('cours').select('id', { count: 'exact', head: true }).eq('lieu_id', id),
+      supabase.from('workshops').select('id', { count: 'exact', head: true }).eq('lieu_id', id),
+    ]);
+    if (nbCours || nbWorkshops) erreur = 'Ce lieu est utilisé par des créneaux ou des workshops : il ne peut pas être supprimé. Décochez « Lieu actif » pour ne plus le proposer.';
+    else {
+      const { error } = await supabase.from('lieux').delete().eq('id', id);
+      if (error) erreur = 'Le lieu n’a pas pu être supprimé.';
+      else message = 'Lieu supprimé.';
+    }
+  }
+
   if (action === 'lieu-ajouter' || action === 'lieu-modifier') {
     const { v, e } = lireLieu(d);
     if (e) erreur = e;
@@ -139,7 +153,7 @@ const [{ data: cours }, { data: lieux }] = await Promise.all([
     .order('saison_debut')
     .order('jour_semaine')
     .order('heure_debut'),
-  supabase.from('lieux').select('*').order('nom'),
+  supabase.from('lieux').select('*, cours(count), workshops(count)').order('nom'),
 ]);
 
 // Regroupement par saison
@@ -272,7 +286,9 @@ const h = (v: string) => v.slice(0, 5);
     <p class="texte-petit texte-doux">L’adresse complète figure dans les mails de confirmation.</p>
     <ul class="creneaux">
       {
-        (lieux ?? []).map((l) => (
+        (lieux ?? []).map((l: any) => {
+          const utilisations = (l.cours?.[0]?.count ?? 0) + (l.workshops?.[0]?.count ?? 0);
+          return (
           <li class:list={['creneau', { 'creneau--inactif': !l.actif }]}>
             <details class="depliant">
               <summary>
@@ -291,9 +307,21 @@ const h = (v: string) => v.slice(0, 5);
                 <label class="case"><input type="checkbox" name="actif" checked={l.actif} /> Lieu actif (proposé pour les créneaux et workshops)</label>
                 <div><Bouton type="submit" taille="compacte">Enregistrer</Bouton></div>
               </form>
+              {utilisations === 0 ? (
+                <form method="post" data-confirmer={`Supprimer définitivement le lieu « ${l.nom} » ?`}>
+                  <input type="hidden" name="action" value="lieu-supprimer" />
+                  <input type="hidden" name="id" value={l.id} />
+                  <button type="submit" class="bouton-lien bouton-lien--danger">Supprimer ce lieu</button>
+                </form>
+              ) : (
+                <p class="texte-petit texte-doux">
+                  Utilisé par {utilisations} créneau{utilisations > 1 ? 'x' : ''} ou workshop{utilisations > 1 ? 's' : ''} : il ne peut pas être supprimé (pour garder l’historique). Décochez « Lieu actif » pour ne plus le proposer.
+                </p>
+              )}
             </details>
           </li>
-        ))
+          );
+        })
       }
     </ul>
     <details class="depliant">
