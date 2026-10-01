@@ -1,6 +1,8 @@
 # Yogside — Refonte · Spécifications techniques
 
-Stack : **Astro** (front) · **Sanity** (contenu éditorial) · **Supabase** (réservations) · **Resend** (emails) · **Vercel** ou **Cloudflare** (hébergement)
+Stack : **Astro** (front) · **Sanity** (contenu éditorial) · **Supabase** (réservations) · **Resend** (emails) · **Vercel** (hébergement, adaptateur `@astrojs/vercel`, tâches planifiées via Vercel Cron)
+
+> **Décisions d'octobre 2026** intégrées à ce document : comptes élèves optionnels par lien magique, périodes off, nouvelle saison = nouvelles lignes `cours`, fuseau `Europe/Paris`, unicité limitée aux réservations confirmées, jauge des workshops, vues en `security_invoker`, hébergement Vercel.
 
 ---
 
@@ -42,7 +44,7 @@ Ne mets jamais les cours dans Sanity : la capacité et les réservations doivent
 | saison_fin | date | ex. 20/12/2026 |
 | actif | bool | |
 
-C'est la table qu'elle modifie une fois par an.
+C'est la table qu'elle met à jour une fois par an. **Un cours n'est jamais modifié une fois ses séances générées** : si un horaire ou un lieu change à la rentrée, on crée de nouvelles lignes `cours` pour la nouvelle saison (`saison_debut` / `saison_fin`), et les anciennes restent intactes pour l'historique. C'est pour ça que `seances` n'a pas besoin de recopier les heures ni le lieu.
 
 ### `seances` — les occurrences réelles
 | colonne | type | note |
@@ -54,7 +56,22 @@ C'est la table qu'elle modifie une fois par an.
 | annulee | bool | pour les vacances, les absences |
 | motif_annulation | text | |
 
-**C'est la décision d'architecture la plus importante du projet.** Plutôt que de calculer les créneaux à la volée, on crée une ligne par séance réelle. Ça permet d'annuler un cours précis, de changer la capacité d'une fois, de gérer les vacances scolaires, et surtout de compter les inscrits avec une simple jointure. Une tâche planifiée génère les séances six à huit semaines à l'avance.
+**C'est la décision d'architecture la plus importante du projet.** Plutôt que de calculer les créneaux à la volée, on crée une ligne par séance réelle. Ça permet d'annuler un cours précis, de changer la capacité d'une fois, de gérer les vacances scolaires, et surtout de compter les inscrits avec une simple jointure. Une tâche planifiée génère les séances six à huit semaines à l'avance, en sautant les dates couvertes par une période off. Unicité sur `(cours_id, date)` pour que la génération puisse tourner plusieurs fois sans créer de doublons.
+
+### `periodes_off` — les absences de la professeure
+| colonne | type | note |
+|---|---|---|
+| id | uuid | |
+| date_debut | date | |
+| date_fin | date | égale à `date_debut` pour un seul jour ; contrainte `date_fin >= date_debut` |
+| motif | text | repris dans le mail d'annulation aux inscrits |
+| created_at | timestamptz | |
+
+À la création d'une période off :
+- la génération ne crée plus de séance sur ces dates ;
+- les séances déjà générées sur la période passent à `annulee = true` avec le motif, et leurs inscrits reçoivent le mail d'annulation.
+
+Les workshops ne sont pas concernés : elle les crée elle-même, au cas par cas.
 
 ### `workshops` — les événements ponctuels
 | colonne | type | note |
@@ -76,7 +93,7 @@ C'est la table qu'elle modifie une fois par an.
 | seance_id | uuid → seances | nullable |
 | workshop_id | uuid → workshops | nullable |
 | prenom / nom | text | |
-| email | text | |
+| email | text | toujours stocké en minuscules — sert aussi à rattacher la réservation au compte élève |
 | telephone | text | |
 | pret_tapis | bool | « si besoin me prévenir pour le prêt du tapis » |
 | message | text | |
@@ -87,10 +104,27 @@ C'est la table qu'elle modifie une fois par an.
 
 Contrainte à poser : exactement l'un des deux parmi `seance_id` et `workshop_id` doit être rempli.
 
-**Aucune table `eleves`, aucun suivi d'abonnement.** La professeure gère les abonnements directement avec ses élèves pendant les cours — le site n'en a pas connaissance.
+**Aucun suivi d'abonnement.** La professeure gère les abonnements directement avec ses élèves pendant les cours — le site n'en a pas connaissance.
+
+### `profils` — les comptes élèves (optionnels)
+| colonne | type | note |
+|---|---|---|
+| id | uuid | = `auth.users.id`, supprimé en cascade avec le compte |
+| prenom / nom | text | pré-remplissent le formulaire de réservation |
+| telephone | text | |
+| created_at | timestamptz | |
+
+Pas de colonne `email` : c'est celui du compte Supabase Auth, vérifié par le lien magique. **Pas de clé étrangère depuis `reservations`** : une réservation appartient à un compte quand son email est celui du compte. Les réservations faites sans compte, avant l'inscription, apparaissent donc d'elles-mêmes dans l'espace élève.
+
+### `admins`
+| colonne | type | note |
+|---|---|---|
+| user_id | uuid → auth.users | clé primaire |
+
+Le rôle d'administratrice est porté par cette table, alimentée à la main. Aucune politique RLS n'y autorise l'écriture : un élève ne peut pas s'y ajouter. Une fonction `est_admin()` sert dans toutes les politiques.
 
 ### Index et contraintes utiles
-- Unicité sur `(seance_id, email)` et `(workshop_id, email)` pour éviter les doubles inscriptions
+- Unicité sur `(seance_id, email)` et `(workshop_id, email)` **uniquement pour les réservations au statut `confirmee`** (index unique partiel), pour éviter les doubles inscriptions tout en permettant de se réinscrire après une annulation
 - Index sur `seances(date)` pour l'affichage du planning
 - Index sur `reservations(jeton)` pour le lien d'annulation
 
@@ -100,11 +134,11 @@ Contrainte à poser : exactement l'un des deux parmi `seance_id` et `workshop_id
 
 **Ouverture.** Les réservations sont ouvertes en permanence, dès que la séance existe en base. Pas d'ouverture temporisée — la règle du samedi midi du site actuel est abandonnée.
 
-**Fermeture.** Une séance n'est plus réservable à partir de son heure de début. *(Valeur par défaut : si la professeure préfère fermer une ou deux heures avant, c'est un simple paramètre à ajuster.)*
+**Fermeture.** Une séance n'est plus réservable à partir de son heure de début, calculée en heure de Paris : `(date + heure_debut) at time zone 'Europe/Paris'`, comparée à `now()`. Jamais de calcul en UTC, sinon tout est décalé d'une à deux heures selon la saison. *(Valeur par défaut : si la professeure préfère fermer une ou deux heures avant, c'est un simple paramètre à ajuster.)*
 
 **Séance complète.** Quand `places_restantes` tombe à zéro, la séance s'affiche comme complète, le formulaire est désactivé et un message invite à contacter directement la professeure. **Pas de liste d'attente.**
 
-**Annulation.** L'élève annule via le lien reçu par mail, à tout moment. La règle des 6 heures et le rattrapage sous deux semaines sont **affichés sur le site à titre informatif uniquement** — aucun contrôle automatique, aucun suivi dans l'outil. La professeure gère ces cas de vive voix.
+**Annulation.** L'élève annule à tout moment, via le lien reçu par mail ou depuis son espace élève s'il a un compte. La règle des 6 heures et le rattrapage sous deux semaines sont **affichés sur le site à titre informatif uniquement** — aucun contrôle automatique, aucun suivi dans l'outil. La professeure gère ces cas de vive voix.
 
 **Tarifs.** Ceux de 2025 sont reconduits : 18 € le cours à l'unité, abonnement trimestriel à 210 €, −15 % sur un second cours hebdomadaire. Ils sont **affichés depuis Sanity**, sans aucune incidence sur le système de réservation.
 
@@ -112,10 +146,10 @@ Contrainte à poser : exactement l'un des deux parmi `seance_id` et `workshop_id
 
 ## 4. La jauge
 
-Une vue SQL fait tout le travail :
+Une vue SQL fait tout le travail. Elle est créée avec `security_invoker = true` (sinon, dans Supabase, une vue contourne le RLS des tables) et ne renvoie que des chiffres, jamais de données personnelles. La version finale joint aussi `cours` pour exposer l'heure de début et un booléen `reservable`.
 
 ```sql
-create view seances_disponibilite as
+create view seances_disponibilite with (security_invoker = true) as
 select
   s.id,
   s.date,
@@ -128,6 +162,10 @@ where s.annulee = false
 group by s.id;
 ```
 
+Une vue équivalente, `workshops_disponibilite`, fait la même chose pour les workshops publiés.
+
+La fonction de réservation (`reserver`) gère les deux cas : séance ou workshop. Elle verrouille la ligne concernée (`select … for update`), vérifie qu'elle n'est ni annulée ni commencée, compte les réservations confirmées, puis insère — tout dans la même transaction.
+
 **Attention au point critique :** la vérification de la jauge doit se faire **côté serveur, dans une transaction**, pas dans le navigateur. Sinon deux personnes qui réservent la douzième place en même temps passent toutes les deux. Une fonction Postgres qui verrouille la ligne de la séance, compte, puis insère — c'est exactement le genre de chose que Webflow ne sait pas faire, et une bonne raison de ce projet.
 
 ---
@@ -138,7 +176,9 @@ group by s.id;
 
 **À l'élève, 24 h avant :** rappel, via une tâche planifiée quotidienne.
 
-**À l'élève, si la séance est annulée :** information immédiate avec le motif.
+**À l'élève, si la séance est annulée :** information immédiate avec le motif (annulation ponctuelle ou période off).
+
+**À l'élève, connexion :** le lien magique est envoyé par Supabase Auth. On le fait passer par le SMTP de Resend, avec un modèle de mail en français.
 
 **À la professeure, à chaque réservation :** nom, email, téléphone, prêt de tapis éventuel, cours concerné, et la jauge mise à jour (« 9/12 »).
 
@@ -148,14 +188,29 @@ Le lien d'annulation contient un jeton unique par réservation — pas besoin de
 
 ---
 
-## 6. L'espace de gestion
+## 6. L'espace élève
 
-Une page admin dans Astro, protégée par l'authentification par lien magique de Supabase. Pas de mot de passe à retenir.
+Un compte est **optionnel** : on peut toujours réserver sans compte. On se connecte par lien magique Supabase, sans mot de passe. Le compte est créé à la première connexion.
+
+Ce que l'élève peut faire :
+- Voir ses réservations à venir et les annuler en un clic
+- Voir l'historique des séances et workshops auxquels il était inscrit
+- Modifier son profil (prénom, nom, téléphone), qui pré-remplit ensuite le formulaire de réservation
+- Supprimer son compte : ses réservations à venir sont annulées, les passées sont anonymisées (nom, email et téléphone effacés), puis le profil et le compte Auth sont supprimés. La suppression passe par une route serveur Astro, qui seule détient la clé de service.
+
+L'espace élève ne montre aucune notion d'abonnement ni de décompte de séances.
+
+---
+
+## 7. L'espace de gestion
+
+Une page admin dans Astro, protégée par l'authentification par lien magique de Supabase. Pas de mot de passe à retenir. L'accès est réservé aux comptes présents dans la table `admins`.
 
 Ce qu'elle doit pouvoir faire :
 - Voir le planning de la semaine avec les jauges
 - Ouvrir une séance et voir la liste des inscrits
 - Annuler une séance, avec email automatique aux inscrits
+- Déclarer une période off (un jour ou une période), avec annulation des séances concernées et email aux inscrits
 - Créer et publier un workshop
 - Modifier les créneaux récurrents en début de saison
 - Exporter une liste en CSV
@@ -164,19 +219,20 @@ Pour les premières semaines, l'interface Supabase suffit à dépanner — mais 
 
 ---
 
-## 7. Les étapes
+## 8. Les étapes
 
-1. Schéma Supabase, vue de disponibilité, fonction de réservation transactionnelle, politiques RLS
+1. Schéma Supabase (dont `periodes_off`, `profils`, `admins`), vues de disponibilité, fonction de réservation transactionnelle, politiques RLS
 2. Jeu de données réel : les quatre lieux, les créneaux de la saison en cours
 3. Front Astro : planning, page cours, formulaire de réservation
 4. Emails Resend et tâches planifiées
-5. Page admin
-6. Contenu éditorial dans Sanity et branchement
-7. Recette sur une adresse de test, puis bascule DNS
+5. Espace élève : connexion par lien magique, mes réservations, profil, suppression du compte
+6. Page admin
+7. Contenu éditorial dans Sanity et branchement
+8. Recette sur une adresse de test, puis bascule DNS
 
 ---
 
-## 8. Points de vigilance
+## 9. Points de vigilance
 
 Le site actuel affiche des **messages d'erreur en anglais** sur la page Réservation, et son flux Instagram déverse des légendes du type « réservation lien en bio » dans le contenu. À vérifier à l'œil avant d'en parler à la cliente.
 

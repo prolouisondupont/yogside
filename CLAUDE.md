@@ -23,7 +23,7 @@ entièrement fonctionnelle.
 | Contenu éditorial | Sanity |
 | Données transactionnelles | Supabase (Postgres) |
 | Emails | Resend |
-| Hébergement | Vercel ou Cloudflare Pages |
+| Hébergement | Vercel (adaptateur `@astrojs/vercel`, tâches planifiées via Vercel Cron) |
 
 Les spécifications complètes (modèle de données, règles métier, emails, étapes)
 sont dans **`docs/specs.md`**. Le lire avant toute intervention sur le schéma
@@ -42,16 +42,23 @@ Les cours sont des créneaux récurrents (`cours`), mais chaque occurrence réel
 comme une ligne dans `seances`, générée 6 à 8 semaines à l'avance par une tâche planifiée.
 C'est ce qui permet d'annuler un cours précis, de gérer les vacances et de compter les
 inscrits par simple jointure. Ne jamais recalculer les créneaux à la volée.
+Un cours n'est jamais modifié une fois ses séances générées : un changement d'horaire
+ou de lieu à la rentrée crée de **nouvelles lignes `cours`** pour la nouvelle saison.
 
 **3. La vérification de capacité se fait côté serveur, dans une transaction**
 Une fonction Postgres qui verrouille la ligne de la séance, compte les réservations
 confirmées, puis insère. Jamais de contrôle de jauge côté navigateur : deux personnes
 réservant la dernière place simultanément passeraient toutes les deux.
 
-**4. Pas de comptes élèves**
-Il n'y a pas de paiement en ligne, donc pas d'authentification côté public.
-L'annulation se fait par un jeton unique inclus dans le lien du mail de confirmation.
-Seul l'espace de gestion est protégé, par lien magique Supabase.
+**4. Comptes élèves optionnels, par lien magique**
+*(Décision d'octobre 2026, remplace l'ancienne règle « pas de comptes élèves ».)*
+On peut réserver **sans compte** : formulaire + lien d'annulation par jeton dans le mail.
+Un élève peut aussi se connecter par lien magique Supabase (pas de mot de passe) pour
+retrouver ses réservations à venir et passées, les annuler, modifier son profil et
+supprimer son compte. Les réservations sont rattachées au compte **par l'email**
+(vérifié par le lien magique) : celles faites avant la création du compte y apparaissent.
+Le rôle administrateur est porté par une table dédiée (`admins`), jamais par une
+colonne que l'utilisateur pourrait modifier lui-même.
 
 ## Métier — ce qu'il faut comprendre
 
@@ -74,18 +81,23 @@ réservation. Case à cocher, information remontée dans le mail à la professeu
 **Ouverture** : les réservations sont ouvertes en permanence, dès que la séance existe
 en base. L'ancienne règle d'ouverture le samedi midi est abandonnée.
 
-**Fermeture** : une séance n'est plus réservable à partir de son heure de début.
+**Fermeture** : une séance n'est plus réservable à partir de son heure de début,
+calculée en heure de Paris (`Europe/Paris`), jamais en UTC.
 
 **Séance complète** : le formulaire est désactivé et un message invite à contacter
 directement la professeure. **Pas de liste d'attente.**
 
-**Annulation** : possible à tout moment via le lien reçu par mail. La règle des 6 heures
+**Annulation** : possible à tout moment via le lien reçu par mail ou depuis l'espace élève. La règle des 6 heures
 et le rattrapage sous deux semaines sont **affichés à titre informatif uniquement** —
 aucun contrôle automatique, aucun suivi dans l'outil.
 
 **Abonnements** : **aucun suivi dans l'application.** La professeure gère les abonnements
-trimestriels directement avec ses élèves pendant les cours. Ne pas créer de table `eleves`,
-ni de notion d'abonné, ni de décompte de séances.
+trimestriels directement avec ses élèves pendant les cours. Les comptes élèves (`profils`)
+ne portent aucune notion d'abonné ni de décompte de séances.
+
+**Périodes off** : la professeure déclare ses absences (un jour ou une période). Aucune
+séance n'est générée sur ces dates ; les séances déjà existantes sont annulées et les
+inscrits prévenus par mail. Les workshops ne sont pas concernés.
 
 **Tarifs** : ceux de 2025 sont reconduits — 18 € le cours à l'unité, abonnement trimestriel
 à 210 €, −15 % sur un second cours hebdomadaire. Ils sont affichés depuis Sanity et n'ont
@@ -94,11 +106,12 @@ aucune incidence sur le système de réservation.
 ## Qui utilise quoi
 
 **Les élèves** : consultent le planning, réservent un cours ou un workshop, reçoivent
-une confirmation puis un rappel, peuvent annuler via un lien.
+une confirmation puis un rappel, peuvent annuler via un lien. S'ils le souhaitent,
+ils créent un compte pour retrouver leurs réservations et pré-remplir le formulaire.
 
 **La professeure** : modifie ses textes et ses tarifs dans Sanity, consulte le planning
 et les jauges dans l'espace de gestion, voit la liste des inscrits, annule une séance,
-crée un workshop, met à jour ses créneaux une fois par an. Elle n'est pas technicienne —
+crée un workshop, déclare ses périodes off, met à jour ses créneaux une fois par an. Elle n'est pas technicienne —
 tout ce qu'elle doit faire au quotidien passe par une interface, jamais par Supabase.
 
 ## Conventions de code
@@ -118,13 +131,17 @@ tout ce qu'elle doit faire au quotidien passe par une interface, jamais par Supa
 - La clé de service Supabase ne doit jamais être exposée côté client :
   uniquement dans les routes serveur Astro
 - Row Level Security activée sur toutes les tables
+- Les vues exposées au public sont créées avec `security_invoker` et ne renvoient
+  que des chiffres (jauges), jamais de données personnelles
 - Les données personnelles collectées (nom, email, téléphone) sont minimales
-  et destinées au seul usage de la réservation
+  et destinées au seul usage de la réservation ; la suppression d'un compte efface
+  le profil et anonymise les réservations associées
 
 ## Ce qu'il ne faut pas faire
 
 - Toucher au site WordPress actuel ou à son DNS avant validation complète
 - Ajouter du paiement en ligne — hors périmètre, décidé avec la cliente
-- Créer un système de comptes élèves ou un suivi d'abonnement
+- Créer un suivi d'abonnement ou un décompte de séances
+- Rendre le compte obligatoire pour réserver
 - Implémenter une liste d'attente
 - Automatiser le contrôle des règles d'annulation ou de rattrapage
