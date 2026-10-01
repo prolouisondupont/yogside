@@ -44,24 +44,24 @@ export function cheminSur(suivant: string | null | undefined, defaut = '/mon-esp
 }
 
 /**
- * Envoie un lien de connexion. Crée le compte s'il n'existe pas.
- * Renvoie toujours « ok » côté formulaire pour ne pas révéler si un compte existe.
+ * Envoie un lien de connexion. Crée le compte s'il n'existe pas : la réponse
+ * ne révèle donc jamais si une adresse avait déjà un compte.
  */
-export async function envoyerLienConnexion(email: string, suivant: string) {
+export async function envoyerLienConnexion(email: string, suivant: string): Promise<'envoye' | 'trop_tot' | 'echec'> {
   const db = supabaseService();
 
   // Anti-abus : un lien par minute et par adresse
   const { data: limite } = await db.from('limites_envoi').select('dernier_envoi').eq('email', email).maybeSingle();
-  if (limite && Date.now() - new Date(limite.dernier_envoi).getTime() < DELAI_ENTRE_ENVOIS_MS) return;
+  if (limite && Date.now() - new Date(limite.dernier_envoi).getTime() < DELAI_ENTRE_ENVOIS_MS) return 'trop_tot';
   await db.from('limites_envoi').upsert({ email, dernier_envoi: new Date().toISOString() });
 
   const { data, error } = await db.auth.admin.generateLink({ type: 'magiclink', email });
   if (error || !data.properties?.hashed_token) {
     console.error('Lien de connexion : génération impossible', error);
-    return;
+    return 'echec';
   }
 
   const site = (import.meta.env.PUBLIC_SITE_URL ?? 'https://yogside.vercel.app').replace(/\/$/, '');
   const lien = `${site}/auth/confirmer?token_hash=${encodeURIComponent(data.properties.hashed_token)}&suivant=${encodeURIComponent(suivant)}`;
-  await envoyer({ a: email, ...mailConnexion(lien) });
+  return (await envoyer({ a: email, ...mailConnexion(lien) })) ? 'envoye' : 'echec';
 }

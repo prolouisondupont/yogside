@@ -6,6 +6,9 @@ import { dateComplete, dateLongue, heureCourte, lienCarte } from './format';
 import { reservation as textes } from '../contenus/textes';
 
 const env = import.meta.env;
+
+/** Valeur d'environnement sans guillemets parasites (copiés depuis un .env) */
+const sansGuillemets = (v: string | undefined) => v?.trim().replace(/^(["'])(.*)\1$/, '$2');
 const SITE = (env.PUBLIC_SITE_URL ?? 'https://yogside.vercel.app').replace(/\/$/, '');
 
 // --- Envoi ---
@@ -13,10 +16,10 @@ const SITE = (env.PUBLIC_SITE_URL ?? 'https://yogside.vercel.app').replace(/\/$/
 type Mail = { a: string; objet: string; html: string; texte: string; repondreA?: string };
 
 export async function envoyer({ a, objet, html, texte, repondreA }: Mail) {
-  const redirection = env.EMAIL_REDIRECTION?.trim();
+  const redirection = sansGuillemets(env.EMAIL_REDIRECTION);
   const resend = new Resend(env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
-    from: env.EMAIL_EXPEDITEUR ?? 'Yogside <onboarding@resend.dev>',
+    from: sansGuillemets(env.EMAIL_EXPEDITEUR) || 'Yogside <onboarding@resend.dev>',
     to: [redirection || a],
     subject: redirection ? `[test → ${a}] ${objet}` : objet,
     html,

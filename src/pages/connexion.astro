@@ -24,10 +24,13 @@ if (Astro.request.method === 'POST') {
   } else if (!EMAIL.test(email)) {
     erreur = 'Cette adresse email ne semble pas valide.';
   } else {
-    await envoyerLienConnexion(email, cheminSur(String(donnees.get('suivant') ?? ''))).catch((e) =>
-      console.error('Connexion', e),
-    );
-    envoye = true;
+    const resultat = await envoyerLienConnexion(email, cheminSur(String(donnees.get('suivant') ?? ''))).catch((e) => {
+      console.error('Connexion', e);
+      return 'echec' as const;
+    });
+    if (resultat === 'envoye') envoye = true;
+    else if (resultat === 'trop_tot') erreur = 'Un lien vient de vous être envoyé. Vérifiez vos mails (et les indésirables), ou patientez une minute avant d’en demander un autre.';
+    else erreur = 'L’envoi du lien a échoué. Réessayez dans un instant ; si le problème persiste, contactez-moi.';
   }
 }
 
