@@ -1,0 +1,28 @@
+# Secrets — clés Supabase, Sanity, Resend
+.env
+.env.*
+!.env.example
+
+# Dépendances et builds
+node_modules/
+dist/
+.astro/
+.vercel/
+
+# Sanity
+.sanity/
+
+# Supabase CLI (local)
+supabase/.branches/
+supabase/.temp/
+
+# Logs et OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Éditeur
+.vscode/*
+!.vscode/extensions.json
+.idea/
