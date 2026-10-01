@@ -17,7 +17,7 @@ Légende : ⚠️ = incohérence ou contenu à faire valider par la cliente.
 **Bande photos** (carrousel, 4 visibles, défilement auto toutes les 5 s, pause au survol)
 `WhatsApp-Image-2022-06-23-at-18.29.49.jpeg`, `…18.29.48.jpeg`, `…18.33.59.jpeg`, `…18.33.57.jpeg`, `…18.29.51.jpeg`
 
-**Newsletter** (Brevo / Sendinblue) — ⚠️ présente en ligne, retirée du périmètre de la refonte
+**Newsletter** (Brevo / Sendinblue) — conservée dans la refonte
 > Soyez prévenu des actualités de Yogside 👇
 > Tous les mois, des pensées, des conseils et l'actualité de Yogside dans votre boite mail
 
@@ -91,7 +91,7 @@ Bouton : Réserver un cours
 - Les abonnements/ cartes sont nominatifs et non remboursables.
 - La situation financière ne devant pas être un frein pour la pratique, merci de me contacter en cas de difficulté.
 
-⚠️ CLAUDE.md indique un abonnement trimestriel à 210 € et ne mentionne pas les cartes 5 / 10 séances.
+Ces tarifs font foi (CLAUDE.md mis à jour).
 
 **Philosophie** (liste à puces, photo `…-26.jpg`, motif `mouvement-1.svg`)
 - Chaque classe comporte des techniques de respiration (pranayamas), des postures (asanas), et de la méditation (dhyana).
@@ -176,5 +176,5 @@ Les workshops à venir sont en base (table `workshops`), les dates de septembre 
 | Colette Gym | 54 rue Sébastopol, 37000 Tours | lien Google Maps du site |
 | Inspire | 8 bd Richard Wagner, 37000 Tours | lien Google Maps du site |
 | La Fabrique des Possibles | 14 rue Joseph Bara, 37000 Tours | la-fabrique-des-possibles.fr |
-| Le Yoga de Priti | 52 rue Colbert, 37000 Tours | ⚠️ annuaires, à confirmer |
-| Work'in Tours | 26 rue de la Préfecture, 37000 Tours | ⚠️ annuaires, à confirmer |
+| Le Yoga de Priti | 52 rue Colbert, 37000 Tours | annuaires, confirmée |
+| Work'in Tours | 26 rue de la Préfecture, 37000 Tours | annuaires, confirmée |

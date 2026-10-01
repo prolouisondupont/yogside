@@ -143,7 +143,9 @@ Le rôle d'administratrice est porté par cette table, alimentée à la main. Au
 
 **Annulation.** L'élève annule à tout moment, via le lien reçu par mail ou depuis son espace élève s'il a un compte. La règle des 6 heures et le rattrapage sous deux semaines sont **affichés sur le site à titre informatif uniquement** — aucun contrôle automatique, aucun suivi dans l'outil. La professeure gère ces cas de vive voix.
 
-**Tarifs.** Ceux de 2025 sont reconduits : 18 € le cours à l'unité, abonnement trimestriel à 210 €, −15 % sur un second cours hebdomadaire. Ils sont **affichés depuis Sanity**, sans aucune incidence sur le système de réservation.
+**Tarifs.** Ceux affichés sur le site actuel à partir de septembre 2026 : 18 € le cours à l'unité, carte 5 séances 85 €, carte 10 séances 160 €, abonnement trimestriel 230 € (16 cours), −15 % sur un second cours hebdomadaire. Ils sont **affichés depuis Sanity**, sans aucune incidence sur le système de réservation.
+
+**Newsletter.** Conservée : formulaire en bas de chaque page, inscription envoyée à la liste Brevo existante par une route serveur Astro (`BREVO_API_KEY` et identifiant de liste dans `.env`).
 
 ---
 

@@ -99,9 +99,19 @@ ne portent aucune notion d'abonné ni de décompte de séances.
 séance n'est générée sur ces dates ; les séances déjà existantes sont annulées et les
 inscrits prévenus par mail. Les workshops ne sont pas concernés.
 
-**Tarifs** : ceux de 2025 sont reconduits — 18 € le cours à l'unité, abonnement trimestriel
-à 210 €, −15 % sur un second cours hebdomadaire. Ils sont affichés depuis Sanity et n'ont
-aucune incidence sur le système de réservation.
+**Tarifs** : ceux affichés sur yogside.com « à partir de septembre 2026 » font foi —
+18 € le cours à l'unité, carte de 5 séances à 85 € (2 mois), carte de 10 séances à 160 €
+(4 mois), abonnement trimestriel 1 cours/semaine à 230 € (16 cours), −15 % sur un second
+cours hebdomadaire. Ils sont affichés depuis Sanity et n'ont aucune incidence sur le
+système de réservation. Textes complets dans `docs/contenus-site-actuel.md`.
+
+**Newsletter** : conservée, branchée sur la liste Brevo existante (formulaire « Soyez
+prévenu des actualités de Yogside » en bas de chaque page). L'inscription passe par une
+route serveur Astro ; la clé Brevo reste côté serveur.
+
+**Contenus et effets** : le site actuel est la référence pour les textes, les images et
+les effets (apparitions, parallaxe, logo animé, carrousel…), relevés dans
+`docs/contenus-site-actuel.md`. La maquette Figma ne sert que pour le design.
 
 ## Qui utilise quoi
 
