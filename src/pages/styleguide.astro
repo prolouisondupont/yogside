@@ -1,0 +1,222 @@
+---
+/**
+ * Page de référence du système de design, à valider avant de monter les pages.
+ * Non liée depuis le site.
+ */
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+
+const couleurs = [
+  { nom: 'Noir', variable: '--couleur-noir', valeur: '#090909', usage: 'Boutons pleins' },
+  { nom: 'Titre', variable: '--couleur-titre', valeur: '#262626', usage: 'Titres, texte des boutons' },
+  { nom: 'Texte', variable: '--couleur-texte', valeur: '#1F1F1F', usage: 'Texte courant' },
+  { nom: 'Texte doux', variable: '--couleur-texte-doux', valeur: '#5C5C5C', usage: 'Paragraphes, descriptions' },
+  { nom: 'Discret', variable: '--couleur-discret', valeur: '#B8B8B8', usage: 'Filets, éléments inactifs' },
+  { nom: 'Or', variable: '--couleur-or', valeur: '#CFB762', usage: 'Accent, survol' },
+  { nom: 'Fond doux', variable: '--couleur-fond-doux', valeur: '#F6F6F4', usage: 'Blocs en aplat' },
+];
+
+const typos = [
+  { nom: 'Titre 1', variable: '--texte-h1', detail: 'Medium · 30 → 40px', balise: 'h1', exemple: 'Un yoga doux et vivant, au cœur de Tours' },
+  { nom: 'Titre 2', variable: '--texte-h2', detail: 'Medium · 26 → 32px', balise: 'h2', exemple: "Je m'appelle Mathilde, bienvenue dans votre Yogside" },
+  { nom: 'Titre 3', variable: '--texte-h3', detail: 'Medium · 20 → 24px', balise: 'h3', exemple: 'Hatha flow' },
+  { nom: 'Chapô', variable: '--texte-chapo', detail: 'Regular · 18 → 20px · gris', balise: 'p', classe: 'chapo', exemple: 'Passionnée depuis mon plus jeune âge par l’activité physique en général, j’ai découvert le yoga au début de mon adolescence…' },
+  { nom: 'Texte', variable: '--texte-base', detail: 'Regular · 16px', balise: 'p', exemple: 'Une classe traditionnelle dans l’observance des alignements et de la circulation de l’énergie dans la posture. Une pratique stimulante et apaisante, reliant corps et esprit.' },
+  { nom: 'Petit', variable: '--texte-petit', detail: 'Regular · 12px', balise: 'p', classe: 'texte-petit', exemple: 'Yogside ©2026 Tous droits réservés' },
+];
+
+const espaces = [
+  ['1', 4], ['2', 8], ['3', 12], ['4', 16], ['5', 24], ['6', 32], ['7', 48], ['8', 64], ['9', 96], ['10', 128],
+] as const;
+---
+
+<Base titre="Styleguide — Yogside">
+  <div class="conteneur section pile styleguide" style="--espace-pile: var(--espace-section)">
+    <header class="pile" style="--espace-pile: var(--espace-4)">
+      <p class="texte-doux">Système de design</p>
+      <h1>Styleguide Yogside</h1>
+      <p class="chapo">
+        Les fondations du site, tirées de la maquette Figma et normalisées. Tout ce qui est ici est
+        défini une seule fois dans <code>src/styles/variables.css</code> et réutilisé partout.
+      </p>
+    </header>
+
+    <section class="pile">
+      <h2>Couleurs</h2>
+      <ul class="grille-couleurs">
+        {
+          couleurs.map((c) => (
+            <li class="pastille">
+              <span class="pastille__couleur" style={`background: var(${c.variable})`} />
+              <strong>{c.nom}</strong>
+              <span class="texte-petit texte-doux">{c.valeur} · <code>{c.variable}</code></span>
+              <span class="texte-petit">{c.usage}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="pile">
+      <h2>Typographie — DM Sans</h2>
+      <p class="texte-doux">Tailles fluides : la première valeur s'applique sur mobile, la seconde sur grand écran. Réduis la fenêtre pour voir l'effet.</p>
+      <dl class="liste-typos">
+        {
+          typos.map((t) => {
+            const Balise = t.balise as 'h1' | 'h2' | 'h3' | 'p';
+            return (
+              <div class="typo">
+                <dt class="texte-petit texte-doux">
+                  <strong>{t.nom}</strong><br />
+                  {t.detail}<br />
+                  <code>{t.variable}</code>
+                </dt>
+                <dd>
+                  <Balise class={t.classe}>{t.exemple}</Balise>
+                </dd>
+              </div>
+            );
+          })
+        }
+      </dl>
+    </section>
+
+    <section class="pile">
+      <h2>Boutons</h2>
+      <p class="texte-doux">Survole-les : une petite ellipse dorée apparaît sous le bouton, comme dans la maquette.</p>
+      <div class="rangee">
+        <Bouton href="#">Réserver un cours</Bouton>
+        <Bouton href="#">Voir le planning</Bouton>
+        <Bouton variante="plein">Réserver</Bouton>
+        <Bouton variante="plein" taille="compacte">Réserver un cours</Bouton>
+        <Bouton disabled>Complet</Bouton>
+      </div>
+    </section>
+
+    <section class="pile">
+      <h2>Espacements</h2>
+      <p class="texte-doux">Échelle en multiples de 4. Les écarts mesurés dans la maquette sont arrondis à la valeur la plus proche.</p>
+      <ul class="liste-espaces">
+        {
+          espaces.map(([n, px]) => (
+            <li>
+              <code class="texte-petit">--espace-{n}</code>
+              <span class="barre" style={`width: var(--espace-${n})`} />
+              <span class="texte-petit texte-doux">{px}px</span>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="texte-petit texte-doux">
+        Entre les sections : <code>--espace-section</code> (64 → 160px) · Marges latérales :
+        <code>--marge-laterale</code> (16 → 64px) · Largeur max du contenu : 1384px.
+      </p>
+    </section>
+
+    <section class="pile">
+      <h2>Composition</h2>
+      <div class="exemple-bloc">
+        <div class="exemple-bloc__image" aria-hidden="true"></div>
+        <div class="pile" style="--espace-pile: var(--espace-5)">
+          <h2>Je m'appelle Mathilde, bienvenue dans votre Yogside</h2>
+          <p class="chapo">
+            Passionnée depuis mon plus jeune âge par l’activité physique en général, j’ai découvert le
+            yoga au début de mon adolescence…
+          </p>
+          <div><Bouton href="#">Mon parcours</Bouton></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.85em;
+  }
+
+  .grille-couleurs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: var(--espace-5);
+    padding: 0;
+    list-style: none;
+  }
+
+  .pastille {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-1);
+  }
+
+  .pastille__couleur {
+    aspect-ratio: 4 / 3;
+    margin-bottom: var(--espace-2);
+    border: var(--filet);
+  }
+
+  .liste-typos {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .typo {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: var(--espace-6);
+    padding-block: var(--espace-6);
+    border-top: var(--filet);
+  }
+
+  .typo dd {
+    margin: 0;
+    max-width: var(--largeur-lecture);
+  }
+
+  .rangee {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espace-3);
+  }
+
+  .liste-espaces {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-2);
+    padding: 0;
+    list-style: none;
+  }
+
+  .liste-espaces li {
+    display: grid;
+    grid-template-columns: 6rem auto 1fr;
+    align-items: center;
+    gap: var(--espace-4);
+  }
+
+  .barre {
+    height: 0.75rem;
+    background: var(--couleur-or);
+  }
+
+  .exemple-bloc {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+    align-items: center;
+    gap: clamp(var(--espace-6), 8vw, 10.625rem);
+  }
+
+  .exemple-bloc__image {
+    aspect-ratio: 571 / 719;
+    background: var(--couleur-fond-doux);
+  }
+
+  @media (max-width: 48rem) {
+    .typo,
+    .exemple-bloc {
+      grid-template-columns: 1fr;
+      gap: var(--espace-4);
+    }
+  }
+</style>

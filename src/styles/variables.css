@@ -1,0 +1,69 @@
+/*
+ * Système de design Yogside — variables
+ * Source : maquette Figma « HiFi Yogside » (variables + mesures normalisées).
+ * Les espacements de la maquette, placés à la main, sont ramenés à une échelle.
+ */
+
+:root {
+  /* --- Couleurs (variables Figma) --- */
+  --couleur-noir: #090909;          /* c1 : boutons pleins */
+  --couleur-titre: #262626;         /* balck : titres, texte des boutons */
+  --couleur-texte: #1f1f1f;         /* Gris : texte courant foncé */
+  --couleur-texte-doux: #5c5c5c;    /* Gris texte : paragraphes, descriptions */
+  --couleur-discret: #b8b8b8;       /* filets, liens inactifs */
+  --couleur-or: #cfb762;            /* Or : accent, survol des boutons */
+  --couleur-fond: #ffffff;
+  --couleur-fond-doux: #f6f6f4;     /* blocs en aplat */
+  --couleur-blanc: #ffffff;
+
+  /* Couleurs d'état (hors maquette, pour les formulaires et les jauges) */
+  --couleur-erreur: #a8322d;
+  --couleur-succes: #3f6b4a;
+
+  /* --- Typographie : DM Sans partout --- */
+  --police: 'DM Sans Variable', system-ui, sans-serif;
+
+  /* Tailles fluides : valeur mobile → valeur Figma (desktop 1512px) */
+  --texte-h1: clamp(1.875rem, 1.45rem + 1.4vw, 2.5rem);       /* 30 → 40 */
+  --texte-h2: clamp(1.625rem, 1.35rem + 0.95vw, 2rem);         /* 26 → 32 */
+  --texte-h3: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);          /* 20 → 24 */
+  --texte-chapo: clamp(1.125rem, 1.05rem + 0.25vw, 1.25rem);   /* 18 → 20 */
+  --texte-bouton: 1.125rem;                                    /* 18 */
+  --texte-base: 1rem;                                          /* 16 */
+  --texte-nav: 0.9375rem;                                      /* 15 */
+  --texte-petit: 0.75rem;                                      /* 12 */
+
+  --interligne-titre: 1.1;
+  --interligne-texte: 1.4;
+
+  --graisse-normale: 400;
+  --graisse-moyenne: 500;
+
+  /* --- Espacements : échelle en multiples de 4 --- */
+  --espace-1: 0.25rem;   /* 4 */
+  --espace-2: 0.5rem;    /* 8 */
+  --espace-3: 0.75rem;   /* 12 */
+  --espace-4: 1rem;      /* 16 */
+  --espace-5: 1.5rem;    /* 24 */
+  --espace-6: 2rem;      /* 32 */
+  --espace-7: 3rem;      /* 48 */
+  --espace-8: 4rem;      /* 64 */
+  --espace-9: 6rem;      /* 96 */
+  --espace-10: 8rem;     /* 128 */
+
+  /* Espacement vertical entre sections : 64 → 160 */
+  --espace-section: clamp(4rem, 2.5rem + 6.5vw, 10rem);
+
+  /* --- Mise en page --- */
+  --marge-laterale: clamp(1rem, 0.25rem + 3.8vw, 4rem);   /* 16 → 64 */
+  --largeur-max: 86.5rem;     /* 1384 : contenu pleine largeur */
+  --largeur-etroite: 72rem;   /* 1152 : pages de texte */
+  --largeur-lecture: 42rem;   /* ~70 caractères */
+
+  /* --- Composants --- */
+  --bouton-hauteur: 3.125rem; /* 50 */
+  --bouton-largeur-min: 13.5625rem; /* 217 */
+  --bordure-fine: 1px solid var(--couleur-noir);
+  --filet: 0.5px solid var(--couleur-discret);
+  --transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}

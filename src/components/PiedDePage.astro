@@ -1,0 +1,136 @@
+---
+/**
+ * Pied de page (Figma : Component 12).
+ * Emblème soleil entre deux filets, puis logo · navigation · contact,
+ * et la ligne de copyright.
+ */
+import { Image } from 'astro:assets';
+import logo from '../assets/marque/logo-yogside.png';
+import embleme from '../assets/marque/embleme.png';
+import { liens } from '../lib/navigation';
+
+const annee = new Date().getFullYear();
+---
+
+<footer class="pied conteneur">
+  <div class="pied__separateur" aria-hidden="true">
+    <Image src={embleme} alt="" width={56} height={56} />
+  </div>
+
+  <div class="pied__grille">
+    <a href="/" class="pied__logo" aria-label="Yogside — accueil">
+      <Image src={logo} alt="" width={194} height={63} />
+    </a>
+
+    <nav aria-label="Pied de page">
+      <ul class="pied__liste">
+        {
+          liens.principaux.map((lien) => (
+            <li>
+              <a href={lien.href}>{lien.libelle}</a>
+            </li>
+          ))
+        }
+        <li><a href={liens.contact.href}>{liens.contact.libelle}</a></li>
+      </ul>
+    </nav>
+
+    <div class="pied__contact">
+      <ul class="pied__liste">
+        <li><a href={`mailto:${liens.email}`}>{liens.email}</a></li>
+      </ul>
+      <ul class="pied__liste">
+        <li><a href={liens.reseaux.instagram}>Instagram</a></li>
+        <li><a href={liens.reseaux.facebook}>Facebook</a></li>
+      </ul>
+    </div>
+
+    <p class="pied__mentions texte-petit">Yogside ©{annee} Tous droits réservés</p>
+    <p class="pied__mentions texte-petit"><a href="/mentions-legales">Mentions légales</a></p>
+  </div>
+</footer>
+
+<style>
+  .pied {
+    padding-top: var(--espace-section);
+    padding-bottom: var(--espace-7);
+  }
+
+  /* Emblème centré entre deux filets */
+  .pied__separateur {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-6);
+  }
+
+  .pied__separateur::before,
+  .pied__separateur::after {
+    content: '';
+    flex: 1;
+    border-top: var(--filet);
+  }
+
+  .pied__separateur img {
+    width: 3.5rem;
+    height: auto;
+  }
+
+  .pied__grille {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
+    column-gap: clamp(var(--espace-8), 10vw, 10rem);
+    row-gap: var(--espace-8);
+    padding-top: var(--espace-8);
+  }
+
+  .pied__logo img {
+    width: 12.125rem; /* 194 */
+    height: auto;
+  }
+
+  .pied__liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-1);
+    padding: 0;
+    list-style: none;
+    line-height: 1.375;
+  }
+
+  .pied__contact {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+  }
+
+  .pied a {
+    color: var(--couleur-noir);
+    text-decoration: none;
+  }
+
+  .pied a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+
+  .pied__mentions:first-of-type {
+    grid-column: 1;
+  }
+
+  @media (max-width: 48rem) {
+    .pied__grille {
+      grid-template-columns: 1fr 1fr;
+      justify-content: stretch;
+      column-gap: var(--espace-6);
+    }
+
+    .pied__logo {
+      grid-column: 1 / -1;
+    }
+
+    .pied__mentions {
+      grid-column: auto !important;
+    }
+  }
+</style>

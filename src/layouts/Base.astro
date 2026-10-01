@@ -1,0 +1,31 @@
+---
+import '../styles/global.css';
+import EnTete from '../components/EnTete.astro';
+import PiedDePage from '../components/PiedDePage.astro';
+
+interface Props {
+  titre: string;
+  description?: string;
+}
+
+const { titre, description = 'Cours de yoga à Tours : Hatha flow, Vinyasa et workshops.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Site de test : ne doit pas être indexé tant que yogside.com tourne sous WordPress -->
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{titre}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <EnTete />
+    <main>
+      <slot />
+    </main>
+    <PiedDePage />
+  </body>
+</html>

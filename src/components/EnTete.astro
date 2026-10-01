@@ -1,0 +1,235 @@
+---
+/**
+ * En-tête (Figma : haut des frames Desktop).
+ * Desktop : logo · navigation · contact + réseaux · bouton « Réserver un cours ».
+ * Mobile : logo · bouton menu, qui déplie la navigation en plein écran.
+ */
+import { Image } from 'astro:assets';
+import Bouton from './Bouton.astro';
+import logo from '../assets/marque/logo-yogside.png';
+import Instagram from '../assets/marque/instagram.svg';
+import Facebook from '../assets/marque/facebook.svg';
+import { liens } from '../lib/navigation';
+
+const cheminActuel = Astro.url.pathname;
+const estActif = (href: string) => cheminActuel === href || cheminActuel.startsWith(`${href}/`);
+---
+
+<header class="en-tete">
+  <div class="conteneur en-tete__barre">
+    <a href="/" class="en-tete__logo" aria-label="Yogside — accueil">
+      <Image src={logo} alt="" width={128} height={42} loading="eager" />
+    </a>
+
+    <button
+      type="button"
+      class="en-tete__menu"
+      aria-expanded="false"
+      aria-controls="navigation-principale"
+    >
+      <span class="visuellement-cache">Menu</span>
+      <span class="en-tete__burger" aria-hidden="true"></span>
+    </button>
+
+    <nav id="navigation-principale" class="en-tete__nav" aria-label="Navigation principale">
+      <ul class="en-tete__liens">
+        {
+          liens.principaux.map((lien) => (
+            <li>
+              <a href={lien.href} aria-current={estActif(lien.href) ? 'page' : undefined}>
+                {lien.libelle}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="en-tete__secondaire">
+        <a href={liens.contact.href}>{liens.contact.libelle}</a>
+        <a href={liens.reseaux.instagram} aria-label="Instagram" class="en-tete__icone">
+          <Instagram aria-hidden="true" />
+        </a>
+        <a href={liens.reseaux.facebook} aria-label="Facebook" class="en-tete__icone">
+          <Facebook aria-hidden="true" />
+        </a>
+        <Bouton href={liens.reservation.href} variante="plein" taille="compacte">
+          {liens.reservation.libelle}
+        </Bouton>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  // Ouverture / fermeture du menu mobile
+  const bouton = document.querySelector<HTMLButtonElement>('.en-tete__menu');
+  bouton?.addEventListener('click', () => {
+    const ouvert = bouton.getAttribute('aria-expanded') === 'true';
+    bouton.setAttribute('aria-expanded', String(!ouvert));
+    document.body.classList.toggle('menu-ouvert', !ouvert);
+  });
+</script>
+
+<style>
+  .en-tete {
+    position: relative;
+    z-index: 10;
+    background: var(--couleur-fond);
+  }
+
+  .en-tete__barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espace-6);
+    min-height: 6.25rem; /* 100 : logo à ~30px du haut sur la maquette */
+  }
+
+  .en-tete__logo img {
+    width: 8rem;
+    height: auto;
+  }
+
+  .en-tete__nav,
+  .en-tete__liens,
+  .en-tete__secondaire {
+    display: flex;
+    align-items: center;
+  }
+
+  .en-tete__nav {
+    flex: 1;
+    justify-content: space-between;
+    gap: var(--espace-6);
+    padding-left: var(--espace-9);
+  }
+
+  .en-tete__liens {
+    gap: var(--espace-7);
+    padding: 0;
+    list-style: none;
+  }
+
+  .en-tete__secondaire {
+    gap: var(--espace-5);
+  }
+
+  .en-tete__nav a:not(.bouton) {
+    font-size: var(--texte-nav);
+    text-decoration: none;
+    color: var(--couleur-noir);
+    text-underline-offset: 0.3em;
+  }
+
+  .en-tete__nav a:not(.bouton):hover,
+  .en-tete__nav a[aria-current='page'] {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+
+  .en-tete__icone {
+    display: inline-flex;
+    padding: var(--espace-1);
+  }
+
+  .en-tete__icone svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .en-tete__menu {
+    display: none;
+  }
+
+  /* --- Mobile et tablette --- */
+  @media (max-width: 64rem) {
+    .en-tete__barre {
+      min-height: 4.5rem;
+    }
+
+    .en-tete__menu {
+      position: relative;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0;
+      background: none;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .en-tete__burger,
+    .en-tete__burger::before,
+    .en-tete__burger::after {
+      display: block;
+      width: 1.5rem;
+      height: 1px;
+      background: var(--couleur-noir);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    .en-tete__burger {
+      position: relative;
+    }
+
+    .en-tete__burger::before,
+    .en-tete__burger::after {
+      content: '';
+      position: absolute;
+      left: 0;
+    }
+
+    .en-tete__burger::before { top: -0.4375rem; }
+    .en-tete__burger::after { top: 0.4375rem; }
+
+    .en-tete__menu[aria-expanded='true'] .en-tete__burger {
+      background: transparent;
+    }
+    .en-tete__menu[aria-expanded='true'] .en-tete__burger::before {
+      transform: translateY(0.4375rem) rotate(45deg);
+    }
+    .en-tete__menu[aria-expanded='true'] .en-tete__burger::after {
+      transform: translateY(-0.4375rem) rotate(-45deg);
+    }
+
+    .en-tete__nav {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      flex-direction: column;
+      justify-content: center;
+      gap: var(--espace-8);
+      padding: var(--espace-9) var(--marge-laterale);
+      background: var(--couleur-fond);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity var(--transition), visibility var(--transition);
+    }
+
+    .en-tete__menu[aria-expanded='true'] + .en-tete__nav {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .en-tete__liens {
+      flex-direction: column;
+      gap: var(--espace-5);
+    }
+
+    .en-tete__liens a {
+      font-size: var(--texte-h3) !important;
+    }
+
+    .en-tete__secondaire {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  :global(body.menu-ouvert) {
+    overflow: hidden;
+  }
+</style>

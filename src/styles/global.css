@@ -1,0 +1,142 @@
+@import '@fontsource-variable/dm-sans/opsz.css';
+@import './variables.css';
+
+/* --- Base --- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--police);
+  /* Rendu de la maquette : taille optique fixe à 14 */
+  font-variation-settings: 'opsz' 14;
+  font-size: var(--texte-base);
+  line-height: var(--interligne-texte);
+  color: var(--couleur-texte);
+  background: var(--couleur-fond);
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+picture,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: var(--graisse-moyenne);
+  line-height: var(--interligne-titre);
+  color: var(--couleur-titre);
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--texte-h1); }
+h2 { font-size: var(--texte-h2); line-height: 1.375; }
+h3 { font-size: var(--texte-h3); }
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 2px solid var(--couleur-or);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* --- Utilitaires de mise en page --- */
+
+.conteneur {
+  width: 100%;
+  max-width: calc(var(--largeur-max) + 2 * var(--marge-laterale));
+  margin-inline: auto;
+  padding-inline: var(--marge-laterale);
+}
+
+.conteneur-etroit {
+  max-width: calc(var(--largeur-etroite) + 2 * var(--marge-laterale));
+}
+
+.section {
+  padding-block: var(--espace-section);
+}
+
+.pile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-pile, var(--espace-5));
+}
+
+/* L'écart d'une pile ne se transmet pas aux piles imbriquées */
+.pile > * {
+  --espace-pile: initial;
+}
+
+/* --- Utilitaires de texte --- */
+
+.chapo {
+  font-size: var(--texte-chapo);
+  line-height: 1.2;
+  color: var(--couleur-texte-doux);
+}
+
+.texte-doux {
+  color: var(--couleur-texte-doux);
+}
+
+.texte-petit {
+  font-size: var(--texte-petit);
+}
+
+.centre {
+  text-align: center;
+}
+
+.visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

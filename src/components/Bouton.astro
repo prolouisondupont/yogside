@@ -1,0 +1,111 @@
+---
+/**
+ * Bouton de la maquette (Figma : Component 2, 3, 10, 25).
+ * - contour : cadre noir 1px, 217×50, texte 18px — au survol, une ellipse
+ *   dorée monte depuis le bas (élément « Mask group » de la maquette)
+ * - plein : fond noir, texte blanc (bouton « Réserver un cours » de l'en-tête)
+ * Rendu en <a> si `href` est fourni, sinon en <button>.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = {
+  variante?: 'contour' | 'plein';
+  taille?: 'normale' | 'compacte';
+  href?: string;
+  type?: 'button' | 'submit';
+  disabled?: boolean;
+} & Omit<HTMLAttributes<'a'> & HTMLAttributes<'button'>, 'type'>;
+
+const {
+  variante = 'contour',
+  taille = 'normale',
+  href,
+  type = 'button',
+  disabled = false,
+  class: classe,
+  ...attributs
+} = Astro.props;
+
+const classes = ['bouton', `bouton--${variante}`, `bouton--${taille}`, classe];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} {...attributs}>
+      <span class="bouton__texte"><slot /></span>
+    </a>
+  ) : (
+    <button type={type} disabled={disabled} class:list={classes} {...attributs}>
+      <span class="bouton__texte"><slot /></span>
+    </button>
+  )
+}
+
+<style>
+  .bouton {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--bouton-largeur-min);
+    min-height: var(--bouton-hauteur);
+    padding: var(--espace-3) var(--espace-6);
+    font-size: var(--texte-bouton);
+    font-weight: var(--graisse-moyenne);
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: var(--bordure-fine);
+    border-radius: 0;
+    transition: color var(--transition), border-color var(--transition);
+  }
+
+  /* Petite ellipse dorée (28×17) qui apparaît au survol, à cheval sur la
+     bordure basse — « Mask group » de la maquette */
+  .bouton::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -0.5rem;
+    width: 1.75rem;
+    height: 1.0625rem;
+    background: var(--couleur-or);
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate(-50%, 0.375rem);
+    transition: opacity var(--transition), transform var(--transition);
+  }
+
+  .bouton:hover::before,
+  .bouton:focus-visible::before {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .bouton--contour {
+    color: var(--couleur-titre);
+    background: transparent;
+  }
+
+  .bouton--plein {
+    color: var(--couleur-blanc);
+    background: var(--couleur-noir);
+  }
+
+  .bouton--compacte {
+    min-width: 11.4375rem; /* 183 */
+    min-height: 2.5rem;    /* 40 */
+    padding-inline: var(--espace-5);
+    font-size: var(--texte-nav);
+  }
+
+  .bouton:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .bouton:disabled::before {
+    display: none;
+  }
+</style>
