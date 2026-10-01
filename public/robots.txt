@@ -1,0 +1,3 @@
+# Site de test — aucune indexation avant la bascule
+User-agent: *
+Disallow: /
