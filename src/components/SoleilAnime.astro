@@ -1,0 +1,92 @@
+---
+/**
+ * Soleil au pinceau animé (yoglogo.json, Lottie), comme sur le site actuel.
+ * Affiche l'emblème fixe, charge l'animation quand il approche de l'écran,
+ * et la joue au survol de la section qui le contient.
+ */
+import { Image } from 'astro:assets';
+import embleme from '../assets/marque/embleme.png';
+
+interface Props {
+  taille?: number;
+  /** Nombre de lectures à chaque survol */
+  boucles?: number;
+  class?: string;
+}
+
+const { taille = 56, boucles = 1, class: classe } = Astro.props;
+---
+
+<div class:list={['soleil', classe]} style={`--taille: ${taille}px`} data-soleil data-boucles={boucles} aria-hidden="true">
+  <Image src={embleme} alt="" width={taille * 2} height={taille * 2} class="soleil__fixe" />
+</div>
+
+<script>
+  import animationUrl from '../assets/site-actuel/yoglogo.json?url';
+
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  async function preparer(conteneur: HTMLElement) {
+    const { default: lottie } = await import('lottie-web/build/player/lottie_light');
+    const donnees = await (await fetch(animationUrl)).json();
+    const animation = lottie.loadAnimation({
+      container: conteneur,
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      animationData: donnees,
+    });
+    animation.addEventListener('DOMLoaded', () => conteneur.classList.add('est-anime'));
+
+    const boucles = Number(conteneur.dataset.boucles) || 1;
+    let restantes = 0;
+    animation.addEventListener('complete', () => {
+      if (--restantes > 0) animation.goToAndPlay(0, true);
+    });
+
+    const zone = conteneur.closest('section, footer') ?? conteneur;
+    zone.addEventListener('mouseenter', () => {
+      if (restantes > 0) return;
+      restantes = boucles;
+      animation.goToAndPlay(0, true);
+    });
+  }
+
+  if (!reduit) {
+    const observateur = new IntersectionObserver(
+      (entrees) => {
+        for (const entree of entrees) {
+          if (!entree.isIntersecting) continue;
+          observateur.unobserve(entree.target);
+          preparer(entree.target as HTMLElement);
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    document.querySelectorAll<HTMLElement>('[data-soleil]').forEach((el) => observateur.observe(el));
+  }
+</script>
+
+<style>
+  .soleil {
+    position: relative;
+    width: var(--taille);
+    height: var(--taille);
+    flex-shrink: 0;
+  }
+
+  .soleil :global(svg) {
+    position: absolute;
+    inset: 0;
+  }
+
+  .soleil__fixe {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Une fois l'animation chargée, elle remplace l'image fixe */
+  .soleil:global(.est-anime) .soleil__fixe {
+    visibility: hidden;
+  }
+</style>

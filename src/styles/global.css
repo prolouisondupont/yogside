@@ -82,6 +82,42 @@ p {
   }
 }
 
+/* --- Effets (voir src/scripts/effets.ts) ---
+   Masqués seulement si le JavaScript tourne (classe .js posée dans <head>),
+   pour ne jamais cacher de contenu sans JS. */
+
+.js [data-apparition] {
+  opacity: 0;
+  transition:
+    opacity 1.25s cubic-bezier(0.2, 0.6, 0.2, 1),
+    transform 1.25s cubic-bezier(0.2, 0.6, 0.2, 1);
+  transition-delay: var(--delai, 0ms);
+}
+
+.js [data-apparition='fondu-haut'] {
+  transform: translateY(2.5rem);
+}
+
+.js [data-apparition].est-visible {
+  opacity: 1;
+  transform: none;
+}
+
+[data-parallaxe],
+[data-rotation] {
+  will-change: transform;
+}
+
+/* Grossissement au survol (« grow » d'Elementor) */
+.grossit {
+  transition: transform 0.3s ease;
+}
+
+.grossit:hover,
+.grossit:focus-visible {
+  transform: scale(1.1);
+}
+
 /* --- Utilitaires de mise en page --- */
 
 .conteneur {

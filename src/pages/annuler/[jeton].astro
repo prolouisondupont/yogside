@@ -1,0 +1,60 @@
+---
+// Annulation par le lien reçu (jeton unique, sans compte).
+// GET : demande de confirmation. POST : annulation.
+import Base from '../../layouts/Base.astro';
+import Bouton from '../../components/Bouton.astro';
+import Recapitulatif from '../../components/Recapitulatif.astro';
+import { annulerParJeton, detailReservation, UUID } from '../../lib/reservation';
+import { reservation as textes } from '../../contenus/textes';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const { jeton } = Astro.params;
+if (!jeton || !UUID.test(jeton)) return new Response(null, { status: 404 });
+
+let vientDAnnuler = false;
+if (Astro.request.method === 'POST') {
+  vientDAnnuler = await annulerParJeton(jeton);
+}
+
+const resa = await detailReservation({ jeton });
+if (!resa) return new Response(null, { status: 404 });
+---
+
+<Base titre="Annuler ma réservation — Yogside" basDePage={false}>
+  <section class="conteneur annulation">
+    {
+      resa.statut === 'annulee' ? (
+        <>
+          <h1>{vientDAnnuler ? 'Votre réservation est annulée' : 'Cette réservation est déjà annulée'}</h1>
+          <Recapitulatif titre={resa.titre} date={resa.date} heureDebut={resa.heure_debut} heureFin={resa.heure_fin} lieu={resa.lieu} />
+          <p>Votre place est libérée pour quelqu’un d’autre. Merci de m’avoir prévenue !</p>
+          <div>
+            <Bouton href="/planning">Réserver une autre séance</Bouton>
+          </div>
+        </>
+      ) : (
+        <>
+          <h1>Annuler ma réservation</h1>
+          <Recapitulatif titre={resa.titre} date={resa.date} heureDebut={resa.heure_debut} heureFin={resa.heure_fin} lieu={resa.lieu} />
+          <p class="texte-petit texte-doux">{textes.annulation}</p>
+          <form method="post">
+            <Bouton type="submit" variante="plein">Confirmer l’annulation</Bouton>
+          </form>
+          <a href="/planning" class="texte-petit">Finalement, je garde ma place</a>
+        </>
+      )
+    }
+  </section>
+</Base>
+
+<style>
+  .annulation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+    max-width: calc(36rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-9) var(--espace-section);
+  }
+</style>

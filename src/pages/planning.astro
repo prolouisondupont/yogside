@@ -1,0 +1,223 @@
+---
+// Planning : séances et workshops des 4 prochaines semaines, avec les jauges.
+import Base from '../layouts/Base.astro';
+import Jauge from '../components/Jauge.astro';
+import { lieux, seancesAVenir, workshopsAVenir } from '../lib/donnees';
+import { dateLongue, heureCourte } from '../lib/format';
+import { reservation } from '../contenus/textes';
+
+export const prerender = false;
+// Les jauges doivent rester fraîches : pas de cache partagé
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const JOURS = 28;
+const [seances, workshops, tousLesLieux] = await Promise.all([seancesAVenir(JOURS), workshopsAVenir(), lieux()]);
+const limite = new Date(Date.now() + JOURS * 864e5).toISOString().slice(0, 10);
+
+type Ligne = {
+  type: 'seance' | 'workshop';
+  id: string;
+  titre: string;
+  date: string;
+  debut: string;
+  fin: string;
+  lieuId: string;
+  placesRestantes: number;
+  annule: boolean;
+  motif: string | null;
+  reservable: boolean;
+};
+
+const lignes: Ligne[] = [
+  ...seances.map((s) => ({
+    type: 'seance' as const,
+    id: s.id,
+    titre: s.nom,
+    date: s.date,
+    debut: s.heure_debut,
+    fin: s.heure_fin,
+    lieuId: s.lieu_id,
+    placesRestantes: s.places_restantes,
+    annule: s.annulee,
+    motif: s.motif_annulation,
+    reservable: s.reservable,
+  })),
+  ...workshops
+    .filter((w) => w.date <= limite)
+    .map((w) => ({
+      type: 'workshop' as const,
+      id: w.id,
+      titre: w.titre,
+      date: w.date,
+      debut: w.heure_debut,
+      fin: w.heure_fin,
+      lieuId: w.lieu_id,
+      placesRestantes: w.places_restantes,
+      annule: w.annule,
+      motif: w.motif_annulation,
+      reservable: w.reservable,
+    })),
+].sort((a, b) => (a.date + a.debut).localeCompare(b.date + b.debut));
+
+const parJour = new Map<string, Ligne[]>();
+for (const l of lignes) parJour.set(l.date, [...(parJour.get(l.date) ?? []), l]);
+
+// Ni réservable, ni annulée, ni complète : l'heure de début est passée (calcul fait
+// en base, à l'heure de Paris)
+const commence = (l: Ligne) => !l.reservable && !l.annule && l.placesRestantes > 0;
+---
+
+<Base titre="Planning — Yogside" description="Planning des cours de yoga à Tours et réservation en ligne.">
+  <section class="conteneur conteneur-etroit entete pile">
+    <h1 data-apparition="fondu-haut">Planning</h1>
+    <p class="chapo">Choisissez une séance pour réserver votre place. {reservation.rappel}</p>
+  </section>
+
+  <section class="conteneur conteneur-etroit jours">
+    {
+      parJour.size === 0 && <p class="texte-doux">Aucune séance programmée pour le moment.</p>
+    }
+    {
+      [...parJour].map(([date, items]) => (
+        <section class="jour" aria-label={dateLongue(date)}>
+          <h2 class="jour__titre">{dateLongue(date)}</h2>
+          <ul class="jour__liste">
+            {items.map((l) => {
+              const lieu = tousLesLieux.get(l.lieuId);
+              return (
+                <li class:list={['creneau', { 'creneau--annule': l.annule, 'creneau--workshop': l.type === 'workshop' }]}>
+                  <span class="creneau__heure">
+                    {heureCourte(l.debut)} – {heureCourte(l.fin)}
+                  </span>
+                  <span class="creneau__cours">
+                    <strong>{l.titre}</strong>
+                    {l.type === 'workshop' && <span class="creneau__etiquette">Workshop</span>}
+                    <span class="texte-doux">{lieu?.nom}</span>
+                    {l.annule && l.motif && <span class="texte-petit">{l.motif}</span>}
+                  </span>
+                  <Jauge placesRestantes={l.placesRestantes} annule={l.annule} commence={commence(l)} />
+                  <span class="creneau__action">
+                    {l.reservable ? (
+                      <a href={`/reserver/${l.type}/${l.id}`} class="creneau__bouton">
+                        Réserver<span class="visuellement-cache"> {l.titre} du {dateLongue(l.date)} à {heureCourte(l.debut)}</span>
+                      </a>
+                    ) : (
+                      l.placesRestantes <= 0 && !l.annule && (
+                        <a href="mailto:info@yogside.com" class="texte-petit">Me contacter</a>
+                      )
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))
+    }
+  </section>
+</Base>
+
+<style>
+  .entete {
+    --espace-pile: var(--espace-4);
+    padding-block: var(--espace-9) var(--espace-7);
+  }
+
+  .jours {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-7);
+  }
+
+  .jour__titre {
+    padding-bottom: var(--espace-3);
+    font-size: var(--texte-h3);
+    border-bottom: var(--bordure-fine);
+  }
+
+  .jour__titre::first-letter {
+    text-transform: uppercase;
+  }
+
+  .jour__liste {
+    padding: 0;
+    list-style: none;
+  }
+
+  .creneau {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr) auto 8rem;
+    align-items: center;
+    gap: var(--espace-4);
+    padding-block: var(--espace-4);
+    border-bottom: var(--filet);
+  }
+
+  .creneau__heure {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .creneau__cours {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--espace-1) var(--espace-3);
+  }
+
+  .creneau__cours strong {
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .creneau__etiquette {
+    padding: 0.1rem var(--espace-2);
+    font-size: var(--texte-petit);
+    color: var(--couleur-noir);
+    background: var(--couleur-or);
+  }
+
+  .creneau--annule .creneau__heure,
+  .creneau--annule strong {
+    text-decoration: line-through;
+    color: var(--couleur-discret);
+  }
+
+  .creneau__action {
+    text-align: right;
+  }
+
+  .creneau__bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding-inline: var(--espace-5);
+    font-size: var(--texte-nav);
+    font-weight: var(--graisse-moyenne);
+    color: var(--couleur-blanc);
+    text-decoration: none;
+    background: var(--couleur-noir);
+    transition: transform 0.3s ease;
+  }
+
+  .creneau__bouton:hover {
+    transform: scale(1.06);
+  }
+
+  @media (max-width: 48rem) {
+    .creneau {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--espace-2) var(--espace-4);
+    }
+
+    .creneau__heure {
+      grid-column: 1 / -1;
+      font-size: var(--texte-nav);
+      color: var(--couleur-texte-doux);
+    }
+
+    .creneau__action {
+      grid-column: 1 / -1;
+      text-align: left;
+    }
+  }
+</style>

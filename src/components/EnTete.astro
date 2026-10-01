@@ -4,9 +4,8 @@
  * Desktop : logo · navigation · contact + réseaux · bouton « Réserver un cours ».
  * Mobile : logo · bouton menu, qui déplie la navigation en plein écran.
  */
-import { Image } from 'astro:assets';
 import Bouton from './Bouton.astro';
-import logo from '../assets/marque/logo-yogside.png';
+import Logo from '../assets/marque/logo-yogside.svg';
 import Instagram from '../assets/marque/instagram.svg';
 import Facebook from '../assets/marque/facebook.svg';
 import { liens } from '../lib/navigation';
@@ -18,7 +17,7 @@ const estActif = (href: string) => cheminActuel === href || cheminActuel.startsW
 <header class="en-tete">
   <div class="conteneur en-tete__barre">
     <a href="/" class="en-tete__logo" aria-label="Yogside — accueil">
-      <Image src={logo} alt="" width={128} height={42} loading="eager" />
+      <Logo width={128} height={42} aria-hidden="true" />
     </a>
 
     <button
@@ -45,14 +44,14 @@ const estActif = (href: string) => cheminActuel === href || cheminActuel.startsW
       </ul>
 
       <div class="en-tete__secondaire">
-        <a href={liens.contact.href}>{liens.contact.libelle}</a>
+        <a href={`mailto:${liens.email}`}>Me contacter</a>
         <a href={liens.reseaux.instagram} aria-label="Instagram" class="en-tete__icone">
           <Instagram aria-hidden="true" />
         </a>
         <a href={liens.reseaux.facebook} aria-label="Facebook" class="en-tete__icone">
           <Facebook aria-hidden="true" />
         </a>
-        <Bouton href={liens.reservation.href} variante="plein" taille="compacte">
+        <Bouton href={liens.reservation.href} variante="plein" taille="compacte" class="grossit">
           {liens.reservation.libelle}
         </Bouton>
       </div>
@@ -85,7 +84,7 @@ const estActif = (href: string) => cheminActuel === href || cheminActuel.startsW
     min-height: 6.25rem; /* 100 : logo à ~30px du haut sur la maquette */
   }
 
-  .en-tete__logo img {
+  .en-tete__logo svg {
     width: 8rem;
     height: auto;
   }

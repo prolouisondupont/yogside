@@ -1,25 +1,24 @@
 ---
 /**
- * Pied de page (Figma : Component 12).
- * Emblème soleil entre deux filets, puis logo · navigation · contact,
+ * Pied de page (Figma : Component 12 ; site actuel : modèle « footer »).
+ * Soleil animé entre deux filets, puis logo · navigation · contact,
  * et la ligne de copyright.
  */
-import { Image } from 'astro:assets';
-import logo from '../assets/marque/logo-yogside.png';
-import embleme from '../assets/marque/embleme.png';
+import Logo from '../assets/marque/logo-yogside.svg';
+import SoleilAnime from './SoleilAnime.astro';
 import { liens } from '../lib/navigation';
 
 const annee = new Date().getFullYear();
 ---
 
 <footer class="pied conteneur">
-  <div class="pied__separateur" aria-hidden="true">
-    <Image src={embleme} alt="" width={56} height={56} />
+  <div class="pied__separateur">
+    <SoleilAnime taille={64} />
   </div>
 
   <div class="pied__grille">
     <a href="/" class="pied__logo" aria-label="Yogside — accueil">
-      <Image src={logo} alt="" width={194} height={63} />
+      <Logo width={194} height={63} aria-hidden="true" />
     </a>
 
     <nav aria-label="Pied de page">
@@ -31,7 +30,7 @@ const annee = new Date().getFullYear();
             </li>
           ))
         }
-        <li><a href={liens.contact.href}>{liens.contact.libelle}</a></li>
+        <li><a href={liens.reservation.href}>Planning</a></li>
       </ul>
     </nav>
 
@@ -46,7 +45,6 @@ const annee = new Date().getFullYear();
     </div>
 
     <p class="pied__mentions texte-petit">Yogside ©{annee} Tous droits réservés</p>
-    <p class="pied__mentions texte-petit"><a href="/mentions-legales">Mentions légales</a></p>
   </div>
 </footer>
 
@@ -56,7 +54,7 @@ const annee = new Date().getFullYear();
     padding-bottom: var(--espace-7);
   }
 
-  /* Emblème centré entre deux filets */
+  /* Soleil centré entre deux filets */
   .pied__separateur {
     display: flex;
     align-items: center;
@@ -70,11 +68,6 @@ const annee = new Date().getFullYear();
     border-top: var(--filet);
   }
 
-  .pied__separateur img {
-    width: 3.5rem;
-    height: auto;
-  }
-
   .pied__grille {
     display: grid;
     grid-template-columns: repeat(3, auto);
@@ -84,7 +77,7 @@ const annee = new Date().getFullYear();
     padding-top: var(--espace-8);
   }
 
-  .pied__logo img {
+  .pied__logo svg {
     width: 12.125rem; /* 194 */
     height: auto;
   }

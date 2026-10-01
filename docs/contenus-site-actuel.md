@@ -11,7 +11,7 @@ Légende : ⚠️ = incohérence ou contenu à faire valider par la cliente.
 ## Éléments communs à toutes les pages
 
 **En-tête** : logo · Les cours · À propos · Événement · bouton « Réserver un cours »
-- Logo animé (`yoglogo.json`, animation Lottie) qui se joue au survol de l'en-tête, 3 boucles
+- Logo texte en SVG (`logo_type.svg`), fixe
 - Mobile : menu plein écran avec animation d'ouverture (500 ms)
 
 **Bande photos** (carrousel, 4 visibles, défilement auto toutes les 5 s, pause au survol)
@@ -165,7 +165,7 @@ Les workshops à venir sont en base (table `workshops`), les dates de septembre 
 | Rotation au défilement | pastille `puce-1.svg` (bloc Mathilde) | rotation négative, vitesse 1 |
 | Grossissement au survol | boutons « Réserver un cours », images des cours | `grow` (×1,1) |
 | Photo de fond qui change au survol | cartes de cours (accueil) | script jQuery |
-| Logo animé | en-tête | Lottie au survol, 3 boucles |
+| Soleil au pinceau animé (`yoglogo.json`) | au-dessus de l'intro de l'accueil et du filet du pied de page | Lottie, se joue au survol de la section (3 boucles sur l'accueil) |
 | Carrousel automatique | bande photos | 4 visibles, 5 s, transition 500 ms, pause au survol |
 | Menu plein écran animé | mobile | ouverture en 500 ms |
 

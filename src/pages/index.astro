@@ -1,36 +1,194 @@
 ---
-// Page d'attente, en ligne le temps de la refonte.
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+import CartesCours from '../components/CartesCours.astro';
+import SoleilAnime from '../components/SoleilAnime.astro';
+import { accueil } from '../contenus/textes';
+import photoHero from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-10.jpg';
+import portrait from '../assets/site-actuel/portrait-home-2.png';
+import pastille from '../assets/site-actuel/puce-1.svg';
+import filigrane from '../assets/site-actuel/logo_backgound.png';
 ---
 
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Site de test : ne doit pas être indexé tant que yogside.com tourne sous WordPress -->
-    <meta name="robots" content="noindex, nofollow" />
-    <title>Yogside — en construction</title>
-  </head>
-  <body>
-    <main>
-      <h1>Yogside</h1>
-      <p>Le nouveau site est en cours de construction.</p>
-    </main>
-  </body>
-</html>
+<Base titre="Yogside — cours de yoga à Tours">
+  <!-- Ouverture : titre et photo -->
+  <section class="ouverture conteneur">
+    <div class="ouverture__texte pile">
+      <h1 data-apparition="fondu-haut">{accueil.titre}</h1>
+      <div data-apparition="fondu-haut" style="--delai: 200ms">
+        <Bouton href="/a-propos">Découvrir Yogside</Bouton>
+      </div>
+    </div>
+    <div class="ouverture__visuel">
+      <Image src={filigrane} alt="" class="ouverture__filigrane" aria-hidden="true" />
+      <div class="ouverture__photo" data-parallaxe="2.5">
+        <Image
+          src={photoHero}
+          alt="Mathilde en posture de yoga devant un mur de pierre claire"
+          widths={[700, 1100, 1500]}
+          sizes="(max-width: 64rem) 100vw, 45vw"
+          loading="eager"
+          data-apparition="fondu"
+          style="--delai: 500ms"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- Les cours -->
+  <section class="section conteneur cours" aria-labelledby="titre-cours">
+    <div class="cours__entete">
+      <SoleilAnime taille={72} boucles={3} />
+      <h2 id="titre-cours" data-apparition="fondu">{accueil.intro}</h2>
+    </div>
+    <CartesCours />
+    <div class="cours__boutons">
+      <Bouton href="/planning" class="grossit">Réserver un cours</Bouton>
+      <Bouton href="/cours#planning">Voir le planning</Bouton>
+    </div>
+  </section>
+
+  <!-- Mathilde -->
+  <section class="section conteneur mathilde" aria-labelledby="titre-mathilde">
+    <div class="mathilde__visuel">
+      <div data-parallaxe="2">
+        <Image
+          src={portrait}
+          alt="Portrait de Mathilde, souriante"
+          widths={[500, 800, 1068]}
+          sizes="(max-width: 64rem) 100vw, 40vw"
+        />
+      </div>
+    </div>
+    <div class="mathilde__texte pile">
+      <Image src={pastille} alt="" class="mathilde__pastille" data-rotation="-1" aria-hidden="true" />
+      <h2 id="titre-mathilde" data-apparition="fondu-haut">{accueil.mathilde.titre}</h2>
+      <p class="chapo">{accueil.mathilde.texte}</p>
+      <div><Bouton href="/a-propos">Mon parcours</Bouton></div>
+    </div>
+  </section>
+</Base>
 
 <style>
-  body {
-    margin: 0;
-    min-height: 100vh;
+  /* --- Ouverture --- */
+  .ouverture {
     display: grid;
-    place-items: center;
-    font-family: system-ui, sans-serif;
-    background: #fafaf8;
-    color: #1a1a1a;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: var(--espace-8);
+    padding-block: var(--espace-8) var(--espace-section);
   }
-  main {
+
+  .ouverture__texte {
+    --espace-pile: var(--espace-6);
+    align-items: flex-start;
+    padding-left: clamp(0rem, 6vw, 8rem);
+  }
+
+  .ouverture__visuel {
+    position: relative;
+  }
+
+  .ouverture {
+    overflow-x: clip;
+  }
+
+  .ouverture__photo :global(img) {
+    width: 100%;
+    aspect-ratio: 670 / 576;
+    object-fit: cover;
+  }
+
+  /* Soleil au pinceau en filigrane, à cheval sur la photo (maquette : « logo 2 ») */
+  .ouverture__filigrane {
+    position: absolute;
+    left: -9rem;
+    bottom: -6rem;
+    width: 18rem;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* --- Cours --- */
+  .cours {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-7);
+    padding-top: 0;
+  }
+
+  .cours__entete {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--espace-4);
+    max-width: 43rem;
+    margin-inline: auto;
     text-align: center;
-    padding: 1rem;
+  }
+
+  .cours__entete h2 {
+    font-size: var(--texte-h3);
+    line-height: 1.4;
+  }
+
+  .cours__boutons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--espace-3);
+  }
+
+  /* --- Mathilde --- */
+  .mathilde {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+    align-items: center;
+    gap: clamp(var(--espace-7), 10vw, 10.625rem);
+    padding-inline: clamp(var(--marge-laterale), 8vw, 10rem);
+  }
+
+  .mathilde__visuel :global(img) {
+    width: 100%;
+    max-width: 30rem;
+    height: auto;
+  }
+
+  .mathilde__texte {
+    --espace-pile: var(--espace-5);
+    position: relative;
+    max-width: 27rem;
+  }
+
+  .mathilde__pastille {
+    position: absolute;
+    top: -6rem;
+    left: 0;
+    width: 2.5rem;
+    height: auto;
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 64rem) {
+    .ouverture,
+    .mathilde {
+      grid-template-columns: 1fr;
+    }
+
+    .ouverture__texte {
+      padding-left: 0;
+    }
+
+    .ouverture__filigrane {
+      left: auto;
+      right: 0;
+      bottom: -4rem;
+      width: 8rem;
+    }
+
+    .mathilde__pastille {
+      top: -3.5rem;
+    }
   }
 </style>

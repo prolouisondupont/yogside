@@ -1,0 +1,44 @@
+---
+/** État de remplissage d'une séance ou d'un workshop : « 4 places », « Complet »… */
+interface Props {
+  placesRestantes: number;
+  annule: boolean;
+  commence: boolean;
+}
+
+const { placesRestantes, annule, commence } = Astro.props;
+
+const etat = annule ? 'annule' : commence ? 'passe' : placesRestantes <= 0 ? 'complet' : placesRestantes <= 3 ? 'presque' : 'libre';
+const libelles = {
+  annule: 'Annulé',
+  passe: 'Commencé',
+  complet: 'Complet',
+  presque: `Plus que ${placesRestantes} place${placesRestantes > 1 ? 's' : ''}`,
+  libre: `${placesRestantes} places`,
+};
+---
+
+<span class:list={['jauge', `jauge--${etat}`]}>{libelles[etat]}</span>
+
+<style>
+  .jauge {
+    font-size: var(--texte-petit);
+    white-space: nowrap;
+    color: var(--couleur-texte-doux);
+  }
+
+  .jauge--presque {
+    color: #8a6d12;
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .jauge--complet,
+  .jauge--annule {
+    color: var(--couleur-erreur);
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .jauge--passe {
+    color: var(--couleur-discret);
+  }
+</style>

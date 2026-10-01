@@ -1,0 +1,26 @@
+---
+/**
+ * Affiche une ligne de texte avec deux balises minimales, en attendant Sanity :
+ *   **gras**  et  [lien vers le contact]
+ */
+import { liens } from '../lib/navigation';
+
+interface Props {
+  texte: string;
+}
+
+const { texte } = Astro.props;
+const morceaux = texte.split(/(\*\*[^*]+\*\*|\[[^\]]+\])/g).filter(Boolean);
+---
+
+{
+  morceaux.map((m) =>
+    m.startsWith('**') ? (
+      <strong>{m.slice(2, -2)}</strong>
+    ) : m.startsWith('[') ? (
+      <a href={`mailto:${liens.email}`}>{m.slice(1, -1)}</a>
+    ) : (
+      m
+    ),
+  )
+}

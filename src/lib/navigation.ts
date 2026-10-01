@@ -1,18 +1,17 @@
 // Liens du site, partagés entre l'en-tête et le pied de page.
-// Le journal et la boutique de la maquette ne font pas partie de la refonte.
+// Même menu que le site actuel ; le bouton « Réserver un cours » mène au planning.
 
 export const liens = {
   principaux: [
-    { libelle: 'À propos', href: '/a-propos' },
     { libelle: 'Les cours', href: '/cours' },
-    { libelle: 'Planning', href: '/planning' },
+    { libelle: 'À propos', href: '/a-propos' },
+    { libelle: 'Événements', href: '/evenements' },
   ],
-  contact: { libelle: 'Me contacter', href: '/contact' },
   reservation: { libelle: 'Réserver un cours', href: '/planning' },
   // Provisoire : ces coordonnées viendront de Sanity
+  email: 'info@yogside.com',
   reseaux: {
     instagram: 'https://www.instagram.com/yogside_fr/',
     facebook: 'https://www.facebook.com/yogside',
   },
-  email: 'info@yogside.com',
 } as const;

@@ -1,0 +1,238 @@
+---
+// Réservation d'une séance ou d'un workshop.
+// GET : récapitulatif + formulaire. POST : réservation transactionnelle
+// (fonction Postgres reserver), puis redirection vers la confirmation.
+import Base from '../../../layouts/Base.astro';
+import Bouton from '../../../components/Bouton.astro';
+import Recapitulatif from '../../../components/Recapitulatif.astro';
+import Jauge from '../../../components/Jauge.astro';
+import { lieux, seance, workshop } from '../../../lib/donnees';
+import { prix } from '../../../lib/format';
+import { lireFormulaire, reserver, UUID, type Formulaire } from '../../../lib/reservation';
+import { reservation as textes } from '../../../contenus/textes';
+import { liens } from '../../../lib/navigation';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const { type, id } = Astro.params;
+if ((type !== 'seance' && type !== 'workshop') || !id || !UUID.test(id)) {
+  return new Response(null, { status: 404 });
+}
+
+let erreur = '';
+let valeurs: Formulaire = { prenom: '', nom: '', email: '', telephone: '', pretTapis: false, message: '' };
+
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  // Champ piège invisible : rempli uniquement par les robots
+  if (donnees.get('site_web')) return Astro.redirect('/planning', 303);
+
+  valeurs = lireFormulaire(donnees);
+  const resultat = await reserver(type === 'seance' ? { seanceId: id } : { workshopId: id }, valeurs);
+  if (resultat.ok) {
+    return Astro.redirect(`/reserver/confirmation/${resultat.reservation_id}`, 303);
+  }
+  erreur = resultat.message;
+  Astro.response.status = 422;
+}
+
+const [item, tousLesLieux] = await Promise.all([type === 'seance' ? seance(id) : workshop(id), lieux()]);
+if (!item) return new Response(null, { status: 404 });
+
+const titre = 'nom' in item ? item.nom : item.titre;
+const annule = 'annulee' in item ? item.annulee : item.annule;
+const tarif = 'tarif' in item ? item.tarif : null;
+const lieu = tousLesLieux.get(item.lieu_id);
+const complet = item.places_restantes <= 0;
+---
+
+<Base titre={`Réserver — ${titre} — Yogside`} basDePage={false}>
+  <section class="conteneur reservation">
+    <a href="/planning" class="retour">← Retour au planning</a>
+    <h1>Réserver un cours</h1>
+    <p class="texte-petit">{textes.rappel}</p>
+
+    <div class="reservation__recap">
+      <Recapitulatif titre={titre} date={item.date} heureDebut={item.heure_debut} heureFin={item.heure_fin} lieu={lieu} />
+      <p class="reservation__jauge">
+        <Jauge placesRestantes={item.places_restantes} annule={annule} commence={!item.reservable && !annule && !complet} />
+        {tarif != null && <span class="texte-petit texte-doux"> · {prix(tarif)}, règlement sur place</span>}
+      </p>
+    </div>
+
+    {
+      !item.reservable && !erreur ? (
+        <div class="message message--info" role="status">
+          {annule ? (
+            <p>Cette séance est annulée{('motif_annulation' in item && item.motif_annulation) ? ` : ${item.motif_annulation}` : '.'}</p>
+          ) : complet ? (
+            <p>
+              Cette séance est complète. N’hésitez pas à me contacter directement :{' '}
+              <a href={`mailto:${liens.email}`}>{liens.email}</a>
+            </p>
+          ) : (
+            <p>Cette séance a déjà commencé, il n’est plus possible de réserver.</p>
+          )}
+          <p>
+            <a href="/planning">Voir les autres séances</a>
+          </p>
+        </div>
+      ) : (
+        <form method="post" class="formulaire" novalidate={false}>
+          {erreur && (
+            <div class="message message--erreur" role="alert">
+              <p>{erreur}</p>
+            </div>
+          )}
+
+          <div class="formulaire__ligne">
+            <div class="champ">
+              <label for="prenom">Prénom<span aria-hidden="true">*</span></label>
+              <input id="prenom" name="prenom" required autocomplete="given-name" value={valeurs.prenom} />
+            </div>
+            <div class="champ">
+              <label for="nom">Nom<span aria-hidden="true">*</span></label>
+              <input id="nom" name="nom" required autocomplete="family-name" value={valeurs.nom} />
+            </div>
+          </div>
+          <div class="champ">
+            <label for="email">Votre email<span aria-hidden="true">*</span></label>
+            <input id="email" name="email" type="email" required autocomplete="email" value={valeurs.email} />
+          </div>
+          <div class="champ">
+            <label for="telephone">Téléphone<span aria-hidden="true">*</span></label>
+            <input id="telephone" name="telephone" type="tel" required autocomplete="tel" value={valeurs.telephone} />
+          </div>
+          <label class="case">
+            <input type="checkbox" name="pret_tapis" checked={valeurs.pretTapis} />
+            J’ai besoin d’un prêt de tapis
+          </label>
+          <div class="champ">
+            <label for="message">Informations supplémentaires :</label>
+            <textarea id="message" name="message" rows="3">{valeurs.message}</textarea>
+          </div>
+
+          <div class="piege" aria-hidden="true">
+            <label for="site_web">Ne pas remplir</label>
+            <input id="site_web" name="site_web" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <p class="texte-petit texte-doux">{textes.annulation}</p>
+          <p class="texte-petit texte-doux">
+            Vos coordonnées servent uniquement à gérer votre réservation.
+          </p>
+
+          <div>
+            <Bouton type="submit" variante="plein">Je réserve !</Bouton>
+          </div>
+        </form>
+      )
+    }
+  </section>
+</Base>
+
+<style>
+  .reservation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+    max-width: calc(36rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-8) var(--espace-section);
+  }
+
+  .retour {
+    font-size: var(--texte-nav);
+    color: var(--couleur-texte);
+    text-decoration: none;
+  }
+
+  .reservation__recap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-2);
+  }
+
+  .formulaire {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+  }
+
+  .formulaire__ligne {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--espace-4);
+  }
+
+  .champ {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-2);
+  }
+
+  .champ label span {
+    color: var(--couleur-erreur);
+  }
+
+  input:not([type='checkbox']),
+  textarea {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--espace-2) var(--espace-3);
+    background: var(--couleur-blanc);
+    border: 1px solid #dcdcd8;
+    border-radius: 0;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible {
+    border-color: var(--couleur-noir);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .case {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-3);
+    cursor: pointer;
+  }
+
+  .case input {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--couleur-noir);
+  }
+
+  .piege {
+    position: absolute;
+    left: -9999px;
+  }
+
+  .message {
+    padding: var(--espace-4) var(--espace-5);
+    border-left: 3px solid;
+  }
+
+  .message--erreur {
+    color: var(--couleur-erreur);
+    background: #fbf1f0;
+  }
+
+  .message--info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-2);
+    background: var(--couleur-fond-doux);
+    border-color: var(--couleur-or);
+  }
+
+  @media (max-width: 30rem) {
+    .formulaire__ligne {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

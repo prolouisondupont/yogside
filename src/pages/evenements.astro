@@ -1,0 +1,141 @@
+---
+// Événements : workshops à venir, regroupés par type, lus dans Supabase.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Base from '../layouts/Base.astro';
+import { lieux, workshopsAVenir, type WorkshopDispo } from '../lib/donnees';
+import { dateCourte, heureCourte, prix } from '../lib/format';
+import { evenements } from '../contenus/textes';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+
+const [workshops, tousLesLieux] = await Promise.all([workshopsAVenir(), lieux()]);
+
+// Photos disponibles, par nom de fichier
+const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/site-actuel/*.{jpg,jpeg,png}', { eager: true });
+const photo = (fichier: string) => Object.entries(photos).find(([chemin]) => chemin.endsWith(`/${fichier}`))?.[1].default;
+
+// Regroupement par titre, dans l'ordre de la première date
+const groupes = new Map<string, WorkshopDispo[]>();
+for (const w of workshops) groupes.set(w.titre, [...(groupes.get(w.titre) ?? []), w]);
+
+/** "7.11 (17h30-19h30)" comme sur le site actuel */
+const enH = (h: string) => heureCourte(h).replace(':', 'h').replace(/h00$/, 'h');
+const horaire = (w: WorkshopDispo) => `${enH(w.heure_debut)}-${enH(w.heure_fin)}`;
+---
+
+<Base titre="Événements — Yogside" description="Workshops et événements de yoga à Tours : prochaines dates et réservation.">
+  <section class="conteneur entete">
+    <h1 data-apparition="fondu-haut">{evenements.titre}</h1>
+  </section>
+
+  {
+    groupes.size === 0 ? (
+      <p class="conteneur centre texte-doux">Pas de nouvel événement pour le moment. Revenez bientôt !</p>
+    ) : (
+      <section class="conteneur evenements">
+        {[...groupes].map(([titre, dates]) => {
+          const type = evenements.types[titre];
+          const image = type ? photo(type.photo) : undefined;
+          const lieu = tousLesLieux.get(dates[0].lieu_id);
+          return (
+            <article class="evenement" data-apparition="fondu">
+              <h2>{type?.titre ?? titre}</h2>
+              <p class="texte-doux">{type?.sousTitre ?? (lieu ? `à ${lieu.nom}` : '')}</p>
+              {!type && dates[0].description && <p class="texte-doux">{dates[0].description}</p>}
+
+              <div class="evenement__dates">
+                <h3 class="texte-doux">Prochaines dates :</h3>
+                <ul>
+                  {dates.map((w) => (
+                    <li>
+                      {w.reservable ? (
+                        <a href={`/reserver/workshop/${w.id}`}>
+                          {dateCourte(w.date)} ({horaire(w)})
+                        </a>
+                      ) : (
+                        <span class="evenement__indispo">
+                          {dateCourte(w.date)} ({horaire(w)}) — {w.annule ? 'annulé' : 'complet'}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {dates[0].tarif != null && <p class="texte-petit texte-doux">{prix(dates[0].tarif)} · règlement sur place</p>}
+              </div>
+
+              {image && (
+                <Image src={image} alt="" widths={[400, 700]} sizes="(max-width: 48rem) 100vw, 28rem" class="evenement__photo" />
+              )}
+            </article>
+          );
+        })}
+      </section>
+    )
+  }
+
+  <p class="conteneur centre texte-petit texte-doux mentions">{evenements.mentions.join(' · ')}</p>
+</Base>
+
+<style>
+  .entete {
+    padding-block: var(--espace-9) var(--espace-8);
+    text-align: center;
+  }
+
+  .evenements {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--espace-8) var(--espace-7);
+  }
+
+  .evenement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--espace-4);
+    text-align: center;
+  }
+
+  .evenement h2 {
+    font-size: var(--texte-h3);
+  }
+
+  .evenement__dates h3 {
+    font-size: var(--texte-nav);
+    font-weight: var(--graisse-normale);
+  }
+
+  .evenement__dates ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--espace-2) var(--espace-4);
+    margin: var(--espace-2) 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--texte-nav);
+  }
+
+  .evenement__dates a {
+    color: var(--couleur-titre);
+    text-underline-offset: 0.25em;
+  }
+
+  .evenement__indispo {
+    color: var(--couleur-discret);
+    text-decoration: line-through;
+  }
+
+  .evenement :global(.evenement__photo) {
+    width: min(100%, 28rem);
+    aspect-ratio: 1.1;
+    object-fit: cover;
+    margin-top: var(--espace-4);
+  }
+
+  .mentions {
+    padding-top: var(--espace-7);
+  }
+</style>

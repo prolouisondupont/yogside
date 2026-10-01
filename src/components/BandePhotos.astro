@@ -1,0 +1,87 @@
+---
+/**
+ * Bande de photos en carrousel, présente au bas de toutes les pages du site
+ * actuel : 4 photos visibles (2 sur mobile), défilement automatique toutes
+ * les 5 s, transition de 500 ms, pause au survol, en boucle.
+ */
+import { Image } from 'astro:assets';
+import photo1 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.49.jpeg';
+import photo2 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.48.jpeg';
+import photo3 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.33.59.jpeg';
+import photo4 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.33.57.jpeg';
+import photo5 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.51.jpeg';
+
+const photos = [photo1, photo2, photo3, photo4, photo5];
+---
+
+<section class="bande" aria-label="Photos des cours" data-bande>
+  <div class="bande__piste">
+    {
+      [...photos, ...photos].map((photo, i) => (
+        <div class="bande__photo" aria-hidden={i >= photos.length ? 'true' : undefined}>
+          <Image src={photo} alt="" widths={[400, 800]} sizes="(max-width: 48rem) 50vw, 25vw" />
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<script>
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-bande]').forEach((bande) => {
+    const piste = bande.querySelector<HTMLElement>('.bande__piste');
+    if (!piste || reduit) return;
+    const total = piste.children.length / 2;
+    let index = 0;
+    let enPause = false;
+
+    const avancer = () => {
+      if (enPause || document.hidden) return;
+      index += 1;
+      piste.style.transition = 'transform 500ms ease';
+      piste.style.transform = `translateX(calc(${-index} * 100% / var(--visibles)))`;
+    };
+
+    // Arrivé sur les copies, on revient au début sans transition
+    piste.addEventListener('transitionend', () => {
+      if (index < total) return;
+      index = 0;
+      piste.style.transition = 'none';
+      piste.style.transform = 'translateX(0)';
+    });
+
+    bande.addEventListener('mouseenter', () => (enPause = true));
+    bande.addEventListener('mouseleave', () => (enPause = false));
+    setInterval(avancer, 5000);
+  });
+</script>
+
+<style>
+  .bande {
+    --visibles: 4;
+    overflow: hidden;
+    margin-inline: var(--marge-laterale-bande, 1.25rem);
+  }
+
+  .bande__piste {
+    display: flex;
+  }
+
+  .bande__photo {
+    flex: 0 0 calc(100% / var(--visibles));
+    aspect-ratio: 378 / 523;
+  }
+
+  .bande__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (max-width: 48rem) {
+    .bande {
+      --visibles: 2;
+    }
+  }
+</style>

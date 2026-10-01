@@ -1,0 +1,312 @@
+---
+// Les cours : présentation, planning de la saison (Supabase), tarifs, philosophie.
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+import TexteRiche from '../components/TexteRiche.astro';
+import { creneauxSaison, parCours } from '../lib/donnees';
+import { heureCourte, lienCarte, nomJour } from '../lib/format';
+import { descriptions, lesCours, tarifs } from '../contenus/textes';
+import photoH from '../assets/site-actuel/H.png';
+import photoV from '../assets/site-actuel/V.png';
+import photoW from '../assets/site-actuel/W.png';
+import photoPhilo from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-26.jpg';
+import mouvement from '../assets/site-actuel/mouvement-1.svg';
+import puce from '../assets/site-actuel/puce-1.svg';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+
+const groupes = parCours(await creneauxSaison());
+
+const colonnes = [
+  { id: 'hatha-flow', titre: 'Hatha flow', photo: photoH, parallaxe: '2', decalage: false },
+  { id: 'vinyasa', titre: 'Vinyasa', photo: photoV, parallaxe: '-2', decalage: true },
+  { id: 'workshops', titre: 'Workshops', photo: photoW, parallaxe: '2', decalage: false },
+] as const;
+---
+
+<Base titre="Les cours — Yogside" description="Hatha flow, Vinyasa et workshops à Tours : planning de la saison et tarifs.">
+  <section class="intro conteneur conteneur-etroit pile">
+    <h1 data-apparition="fondu-haut">{lesCours.titre}</h1>
+    <p class="chapo" data-apparition="fondu-haut" style="--delai: 150ms">{lesCours.intro}</p>
+  </section>
+
+  <section id="planning" class="conteneur colonnes" aria-label="Les cours et leur planning">
+    {
+      colonnes.map((col) => {
+        const creneaux = groupes.get(col.titre) ?? [];
+        return (
+          <article id={col.id} class:list={['colonne', { 'colonne--haute': col.decalage }]}>
+            <div class="colonne__photo" data-parallaxe={col.parallaxe} data-ordi-seulement>
+              <Image src={col.photo} alt="" widths={[400, 644]} sizes="(max-width: 64rem) 100vw, 30vw" class="grossit" />
+            </div>
+            <h2>{col.titre}</h2>
+            <p class="texte-doux">{descriptions[col.titre === 'Workshops' ? 'Workshops' : col.titre]}</p>
+
+            {creneaux.length > 0 && (
+              <div class="planning">
+                <h3 class="planning__titre">Planning</h3>
+                <table>
+                  <caption class="visuellement-cache">Créneaux de {col.titre}</caption>
+                  <tbody>
+                    {creneaux.map((c) => (
+                      <tr>
+                        <th scope="row">{nomJour(c.jour_semaine)}</th>
+                        <td>
+                          {heureCourte(c.heure_debut)} à {heureCourte(c.heure_fin)}
+                        </td>
+                        <td>
+                          <a href={lienCarte(c.lieu.adresse, c.lieu.code_postal, c.lieu.ville)} target="_blank" rel="noopener">
+                            {c.lieu.nom}
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {col.id === 'workshops' && (
+              <p>
+                <a href="/evenements" class="lien-fleche">Voir les prochains workshops</a>
+              </p>
+            )}
+          </article>
+        );
+      })
+    }
+  </section>
+
+  <div class="centre reserver">
+    <Bouton href="/planning" class="grossit">Réserver un cours</Bouton>
+  </div>
+
+  <section class="section conteneur tarifs" aria-labelledby="titre-tarifs">
+    <h2 id="titre-tarifs">{tarifs.titre}</h2>
+    <ul>
+      {tarifs.lignes.map((ligne) => <li><TexteRiche texte={ligne} /></li>)}
+    </ul>
+  </section>
+
+  <section class="section conteneur philosophie" aria-label="La pratique">
+    <ul class="philosophie__liste" data-apparition="fondu">
+      {
+        lesCours.philosophie.map((ligne) => (
+          <li>
+            <Image src={puce} alt="" class="philosophie__puce" aria-hidden="true" />
+            {ligne}
+          </li>
+        ))
+      }
+    </ul>
+    <div class="philosophie__visuel">
+      <Image src={photoPhilo} alt="Mathilde en posture d’étirement sur son tapis" widths={[700, 1100]} sizes="(max-width: 64rem) 100vw, 50vw" />
+      <Image src={mouvement} alt="" class="philosophie__motif" data-parallaxe="1" data-ordi-seulement aria-hidden="true" />
+    </div>
+  </section>
+
+  <section class="conteneur valeurs">
+    <div class="valeurs__colonnes">
+      {lesCours.colonnes.map((texte) => <p class="texte-doux">{texte}</p>)}
+    </div>
+    <p class="valeurs__mantra">{lesCours.mantra}</p>
+  </section>
+</Base>
+
+<style>
+  .intro {
+    --espace-pile: var(--espace-5);
+    padding-block: var(--espace-9) var(--espace-section);
+    max-width: calc(48rem + 2 * var(--marge-laterale));
+  }
+
+  /* --- Trois colonnes --- */
+  .colonnes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--espace-6);
+    scroll-margin-top: var(--espace-6);
+  }
+
+  .colonne {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-4);
+    padding-top: var(--espace-8);
+    scroll-margin-top: var(--espace-6);
+  }
+
+  /* Vinyasa plus haute, comme sur le site actuel */
+  .colonne--haute {
+    padding-top: 0;
+  }
+
+  .colonne__photo {
+    overflow: hidden;
+    margin-bottom: var(--espace-4);
+  }
+
+  .colonne__photo :global(img) {
+    width: 100%;
+    aspect-ratio: 644 / 760;
+    object-fit: cover;
+  }
+
+  .colonne h2 {
+    font-size: var(--texte-h1);
+  }
+
+  .planning {
+    margin-top: var(--espace-6);
+  }
+
+  .planning__titre {
+    margin-bottom: var(--espace-4);
+    font-size: var(--texte-base);
+    font-weight: var(--graisse-normale);
+  }
+
+  .planning table {
+    border-collapse: collapse;
+    font-size: var(--texte-nav);
+  }
+
+  .planning th,
+  .planning td {
+    padding: var(--espace-1) var(--espace-6) var(--espace-1) 0;
+    font-weight: var(--graisse-normale);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .planning a {
+    font-weight: var(--graisse-moyenne);
+    text-underline-offset: 0.25em;
+  }
+
+  .lien-fleche {
+    font-weight: var(--graisse-moyenne);
+    text-underline-offset: 0.25em;
+  }
+
+  .reserver {
+    padding-top: var(--espace-8);
+  }
+
+  /* --- Tarifs --- */
+  .tarifs h2 {
+    margin-bottom: var(--espace-6);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3.25rem);
+  }
+
+  .tarifs ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-4);
+    padding: 0;
+    list-style: none;
+    color: var(--couleur-texte-doux);
+    font-size: var(--texte-chapo);
+  }
+
+  .tarifs :global(strong) {
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+  }
+
+  .tarifs :global(a) {
+    color: #c6345f;
+    text-decoration: none;
+  }
+
+  /* --- Philosophie --- */
+  .philosophie {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: center;
+    gap: var(--espace-8);
+  }
+
+  .philosophie__liste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+    padding: 0 0 0 clamp(0rem, 6vw, 6rem);
+    list-style: none;
+  }
+
+  .philosophie__liste li {
+    position: relative;
+    padding-left: var(--espace-8);
+  }
+
+  .philosophie__puce {
+    position: absolute;
+    left: 0;
+    top: 0.1em;
+    width: 1.5rem;
+    height: auto;
+  }
+
+  .philosophie__visuel {
+    position: relative;
+  }
+
+  .philosophie__visuel > :global(img:first-child) {
+    width: 100%;
+    aspect-ratio: 760 / 576;
+    object-fit: cover;
+  }
+
+  .philosophie__motif {
+    position: absolute;
+    top: 8%;
+    left: 22%;
+    width: 50%;
+    height: auto;
+    pointer-events: none;
+  }
+
+  /* --- Valeurs --- */
+  .valeurs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--espace-8);
+    text-align: center;
+  }
+
+  .valeurs__colonnes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 20rem));
+    justify-content: center;
+    gap: clamp(var(--espace-7), 12vw, 12rem);
+  }
+
+  .valeurs__mantra {
+    font-size: var(--texte-nav);
+    font-weight: var(--graisse-moyenne);
+    letter-spacing: 0.02em;
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 64rem) {
+    .colonnes,
+    .philosophie,
+    .valeurs__colonnes {
+      grid-template-columns: 1fr;
+    }
+
+    .colonne,
+    .colonne--haute {
+      padding-top: var(--espace-7);
+    }
+
+    .philosophie__liste {
+      padding-left: 0;
+    }
+  }
+</style>

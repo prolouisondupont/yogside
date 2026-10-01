@@ -1,0 +1,157 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import { aPropos } from '../contenus/textes';
+import portrait from '../assets/site-actuel/285250101_556566269505949_7252807008007773106_n-1.png';
+import inde1 from '../assets/site-actuel/inde1.png';
+import inde2 from '../assets/site-actuel/inde2.png';
+---
+
+<Base titre="À propos — Mathilde Bertrand, Yogside" description="Mathilde Bertrand, professeure de yoga à Tours depuis 2017.">
+  <section class="presentation conteneur">
+    <div class="presentation__portrait" data-parallaxe="4" data-ordi-seulement>
+      <Image src={portrait} alt="Portrait de Mathilde Bertrand" widths={[400, 584]} sizes="(max-width: 64rem) 70vw, 30rem" loading="eager" />
+    </div>
+    <div class="presentation__texte pile">
+      <h1>
+        <span>{aPropos.prenom}</span>
+        <span class="presentation__nom">{aPropos.nom}</span>
+      </h1>
+      <p class="texte-doux">{aPropos.intro}</p>
+    </div>
+  </section>
+
+  <section class="parcours conteneur">
+    <div class="parcours__texte pile texte-doux">
+      {aPropos.paragraphes1.map((p) => <p>{p}</p>)}
+      <blockquote>
+        <p><em>{aPropos.citation}</em></p>
+        <footer>{aPropos.source}</footer>
+      </blockquote>
+      {aPropos.paragraphes2.map((p) => <p>{p}</p>)}
+    </div>
+
+    <div class="parcours__photos" aria-label="Formation en Inde">
+      <div class="parcours__photo parcours__photo--1" data-parallaxe="1" data-ordi-seulement>
+        <Image src={inde1} alt="Coucher de soleil entre les palmiers, en Inde" widths={[400, 675]} sizes="(max-width: 64rem) 70vw, 24rem" />
+      </div>
+      <div class="parcours__photo parcours__photo--2" data-parallaxe="2">
+        <Image src={inde2} alt="Pratique de yoga en duo lors de la formation en Inde" widths={[400, 900]} sizes="(max-width: 64rem) 60vw, 18rem" />
+      </div>
+    </div>
+  </section>
+
+  <section class="section conteneur conclusion">
+    <p data-apparition="fondu-haut">{aPropos.conclusion}</p>
+  </section>
+</Base>
+
+<style>
+  /* --- Présentation --- */
+  .presentation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--espace-8);
+    max-width: calc(64rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-8);
+  }
+
+  .presentation__portrait :global(img) {
+    width: min(100%, 17rem + 10vw);
+    aspect-ratio: 1;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 50%;
+  }
+
+  .presentation__texte {
+    --espace-pile: var(--espace-5);
+  }
+
+  .presentation h1 {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--texte-h1);
+  }
+
+  /* Nom décalé, comme sur le site actuel */
+  .presentation__nom {
+    padding-left: 1.5ch;
+  }
+
+  /* --- Parcours --- */
+  .parcours {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--espace-8);
+    max-width: calc(64rem + 2 * var(--marge-laterale));
+  }
+
+  .parcours__texte {
+    --espace-pile: var(--espace-4);
+    font-size: var(--texte-nav);
+  }
+
+  blockquote {
+    margin: var(--espace-2) 0;
+  }
+
+  blockquote footer {
+    margin-top: var(--espace-2);
+  }
+
+  .parcours__photos {
+    position: relative;
+    min-height: 32rem;
+  }
+
+  .parcours__photo :global(img) {
+    width: 100%;
+    height: auto;
+  }
+
+  .parcours__photo--1 {
+    width: 75%;
+  }
+
+  /* Seconde photo superposée en bas à droite */
+  .parcours__photo--2 {
+    position: absolute;
+    right: -10%;
+    top: 55%;
+    width: 70%;
+  }
+
+  /* --- Conclusion --- */
+  .conclusion p {
+    max-width: 38rem;
+    margin-inline: auto;
+    font-size: var(--texte-h3);
+    line-height: 1.4;
+    text-align: center;
+    color: var(--couleur-titre);
+    text-wrap: balance;
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 64rem) {
+    .presentation,
+    .parcours {
+      grid-template-columns: 1fr;
+    }
+
+    .parcours__photos {
+      min-height: 0;
+      padding-bottom: 40%;
+    }
+
+    .parcours__photo--2 {
+      right: 0;
+      top: auto;
+      bottom: 0;
+      width: 55%;
+    }
+  }
+</style>

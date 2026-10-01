@@ -58,7 +58,10 @@ const classes = ['bouton', `bouton--${variante}`, `bouton--${taille}`, classe];
     cursor: pointer;
     border: var(--bordure-fine);
     border-radius: 0;
-    transition: color var(--transition), border-color var(--transition);
+    transition:
+      color var(--transition),
+      border-color var(--transition),
+      transform 0.3s ease;
   }
 
   /* Petite ellipse dorée (28×17) qui apparaît au survol, à cheval sur la

@@ -1,0 +1,114 @@
+---
+/**
+ * Inscription à la newsletter (liste Brevo existante).
+ * Fonctionne sans JavaScript (envoi classique puis retour sur la page) ;
+ * avec JavaScript, le message s'affiche sans recharger.
+ */
+import Bouton from './Bouton.astro';
+import { newsletter } from '../contenus/textes';
+
+const statut = Astro.url.searchParams.get('newsletter');
+const messages: Record<string, string> = {
+  ok: 'Merci ! Votre inscription est bien prise en compte.',
+  erreur: 'L’inscription n’a pas pu aboutir. Vérifiez votre adresse ou réessayez plus tard.',
+};
+---
+
+<section class="newsletter" aria-labelledby="newsletter-titre">
+  <h2 id="newsletter-titre">{newsletter.titre}</h2>
+  <p>{newsletter.texte}</p>
+
+  <form class="newsletter__formulaire" method="post" action="/api/newsletter" data-newsletter>
+    <label for="newsletter-email" class="visuellement-cache">Votre email</label>
+    <input
+      id="newsletter-email"
+      type="email"
+      name="email"
+      required
+      autocomplete="email"
+      placeholder="Votre email"
+    />
+    <input type="hidden" name="retour" value={Astro.url.pathname} />
+    <Bouton type="submit" variante="plein">envoyer</Bouton>
+  </form>
+
+  <p class="newsletter__message texte-petit" role="status" data-newsletter-message>
+    {statut && messages[statut]}
+  </p>
+  <p class="texte-petit texte-doux">Désinscription possible à tout moment depuis chaque mail.</p>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((formulaire) => {
+    const message = formulaire.parentElement?.querySelector<HTMLElement>('[data-newsletter-message]');
+    formulaire.addEventListener('submit', async (evenement) => {
+      evenement.preventDefault();
+      const bouton = formulaire.querySelector<HTMLButtonElement>('button');
+      if (bouton) bouton.disabled = true;
+      try {
+        const reponse = await fetch(formulaire.action, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: new FormData(formulaire),
+        });
+        const { message: texte } = await reponse.json();
+        if (message) message.textContent = texte;
+        if (reponse.ok) formulaire.reset();
+      } catch {
+        if (message) message.textContent = 'L’inscription n’a pas pu aboutir. Réessayez plus tard.';
+      } finally {
+        if (bouton) bouton.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .newsletter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--espace-3);
+    margin-inline: var(--marge-laterale-bande, 1.25rem);
+    padding: var(--espace-9) var(--marge-laterale);
+    text-align: center;
+    background: var(--couleur-fond-doux);
+  }
+
+  .newsletter h2 {
+    font-size: var(--texte-h2);
+  }
+
+  .newsletter > p:first-of-type {
+    font-size: var(--texte-chapo);
+    color: var(--couleur-texte);
+  }
+
+  .newsletter__formulaire {
+    display: flex;
+    width: 100%;
+    max-width: 33rem;
+    margin-top: var(--espace-5);
+  }
+
+  .newsletter__formulaire input[type='email'] {
+    flex: 1;
+    min-width: 0;
+    min-height: var(--bouton-hauteur);
+    padding-inline: var(--espace-4);
+    background: var(--couleur-blanc);
+    border: 1px solid #e3e3e0;
+    border-right: 0;
+    border-radius: 0;
+  }
+
+  .newsletter__formulaire :global(.bouton) {
+    min-width: 0;
+    flex: 0 0 40%;
+    font-size: var(--texte-nav);
+  }
+
+  .newsletter__message:empty {
+    display: none;
+  }
+</style>

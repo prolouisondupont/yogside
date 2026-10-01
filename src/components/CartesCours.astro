@@ -1,0 +1,217 @@
+---
+/**
+ * Cartes de cours de l'accueil, comme sur le site actuel : trois colonnes
+ * posées sur une grande photo partagée. Au survol (ou au focus clavier)
+ * d'une colonne, la photo de fond devient celle du cours, le titre remonte
+ * et la description apparaît avec « En savoir plus ».
+ * Sur mobile (pas de survol), chaque carte a sa photo et son texte visibles.
+ */
+import { Image } from 'astro:assets';
+import photoHatha from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-26.jpg';
+import photoVinyasa from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-14.jpg';
+import photoWorkshops from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-19.jpg';
+import { descriptions } from '../contenus/textes';
+
+const cartes = [
+  { titre: 'Hatha Flow', texte: descriptions['Hatha flow'], photo: photoHatha, href: '/cours#hatha-flow' },
+  { titre: 'Vinyasa', texte: descriptions.Vinyasa, photo: photoVinyasa, href: '/cours#vinyasa' },
+  { titre: 'Workshops', texte: descriptions.Workshops, photo: photoWorkshops, href: '/evenements' },
+];
+---
+
+<div class="cartes" data-cartes>
+  <div class="cartes__fonds" aria-hidden="true">
+    {
+      cartes.map((carte, i) => (
+        <Image
+          src={carte.photo}
+          alt=""
+          widths={[800, 1400, 2000]}
+          sizes="(max-width: 48rem) 100vw, 1400px"
+          class:list={['cartes__fond', { 'est-actif': i === 0 }]}
+          data-index={i}
+        />
+      ))
+    }
+  </div>
+
+  {
+    cartes.map((carte, i) => (
+      <article class="carte" data-index={i}>
+        <Image src={carte.photo} alt="" widths={[600, 1000]} sizes="100vw" class="carte__photo-mobile" />
+        <div class="carte__contenu">
+          <h3>{carte.titre}</h3>
+          <p class="carte__texte">{carte.texte}</p>
+          <a href={carte.href} class="carte__lien">
+            En savoir plus<span class="visuellement-cache"> sur {carte.titre}</span>
+          </a>
+        </div>
+      </article>
+    ))
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-cartes]').forEach((bloc) => {
+    const fonds = bloc.querySelectorAll<HTMLElement>('.cartes__fond');
+    const activer = (index: string) => {
+      fonds.forEach((fond) => fond.classList.toggle('est-actif', fond.dataset.index === index));
+    };
+    bloc.querySelectorAll<HTMLElement>('.carte').forEach((carte) => {
+      const index = carte.dataset.index ?? '0';
+      carte.addEventListener('mouseenter', () => activer(index));
+      carte.addEventListener('focusin', () => activer(index));
+    });
+    // Retour à la photo par défaut en quittant le bloc
+    bloc.addEventListener('mouseleave', () => activer('0'));
+  });
+</script>
+
+<style>
+  .cartes {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    min-height: 37.5rem; /* 600 */
+    isolation: isolate;
+  }
+
+  .cartes__fonds {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .cartes__fond {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+
+  .cartes__fond.est-actif {
+    opacity: 1;
+  }
+
+  /* Voile sombre de chaque colonne, séparées par un filet blanc de 6px */
+  .carte {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--espace-6);
+    color: var(--couleur-blanc);
+    text-align: center;
+    overflow: hidden;
+    background: rgb(0 0 0 / 0.35);
+  }
+
+  .carte + .carte {
+    border-left: 6px solid var(--couleur-fond);
+  }
+
+  .carte__photo-mobile {
+    display: none;
+  }
+
+  .carte__contenu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--espace-4);
+  }
+
+  .carte h3 {
+    font-size: var(--texte-h1);
+    color: inherit;
+    transform: translateY(2.5rem);
+    transition: transform 0.5s ease;
+  }
+
+  .carte__texte,
+  .carte__lien {
+    opacity: 0;
+    transform: translateY(1rem);
+    transition:
+      opacity 0.5s ease,
+      transform 0.5s ease;
+  }
+
+  .carte__texte {
+    max-width: 25rem;
+    font-size: var(--texte-chapo);
+    line-height: 1.3;
+  }
+
+  .carte__lien {
+    position: absolute;
+    bottom: var(--espace-6);
+    color: inherit;
+    text-decoration: none;
+    font-size: var(--texte-base);
+  }
+
+  /* Le lien couvre toute la carte pour faciliter le clic */
+  .carte__lien::after {
+    content: '';
+    position: absolute;
+    inset: -100vh -100vw; /* rogné par overflow: hidden de la carte */
+  }
+
+  .carte:hover h3,
+  .carte:focus-within h3 {
+    transform: none;
+  }
+
+  .carte:hover .carte__texte,
+  .carte:hover .carte__lien,
+  .carte:focus-within .carte__texte,
+  .carte:focus-within .carte__lien {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* --- Écrans tactiles et mobiles : cartes empilées, tout visible --- */
+  @media (max-width: 64rem), (hover: none) {
+    .cartes {
+      grid-template-columns: 1fr;
+      gap: var(--espace-4);
+      min-height: 0;
+    }
+
+    .cartes__fonds {
+      display: none;
+    }
+
+    .carte {
+      min-height: 26rem;
+      border-left: 0;
+    }
+
+    .carte__photo-mobile {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .carte h3,
+    .carte__texte,
+    .carte__lien {
+      opacity: 1;
+      transform: none;
+    }
+
+
+    .carte {
+      padding-bottom: var(--espace-9);
+      background: rgb(0 0 0 / 0.5);
+    }
+  }
+</style>

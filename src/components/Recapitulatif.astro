@@ -1,0 +1,77 @@
+---
+/** Récapitulatif d'une séance : cours, date, horaire, adresse complète du lieu. */
+import { dateComplete, heureCourte, lienCarte } from '../lib/format';
+
+interface Props {
+  titre: string;
+  date: string;
+  heureDebut: string;
+  heureFin: string;
+  lieu: { nom: string; adresse: string; code_postal: string; ville: string } | undefined;
+}
+
+const { titre, date, heureDebut, heureFin, lieu } = Astro.props;
+---
+
+<dl class="recap">
+  <div>
+    <dt>Cours</dt>
+    <dd>{titre}</dd>
+  </div>
+  <div>
+    <dt>Date</dt>
+    <dd class="recap__date">{dateComplete(date)}</dd>
+  </div>
+  <div>
+    <dt>Horaire</dt>
+    <dd>{heureCourte(heureDebut)} – {heureCourte(heureFin)}</dd>
+  </div>
+  {
+    lieu && (
+      <div>
+        <dt>Lieu</dt>
+        <dd>
+          {lieu.nom}
+          <br />
+          <a href={lienCarte(lieu.adresse, lieu.code_postal, lieu.ville)} target="_blank" rel="noopener">
+            {lieu.adresse}, {lieu.code_postal} {lieu.ville}
+          </a>
+        </dd>
+      </div>
+    )
+  }
+</dl>
+
+<style>
+  .recap {
+    display: grid;
+    gap: var(--espace-3);
+    padding: var(--espace-5);
+    background: var(--couleur-fond-doux);
+  }
+
+  .recap > div {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: var(--espace-4);
+  }
+
+  dt {
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .recap__date::first-letter {
+    text-transform: uppercase;
+  }
+
+  dd a {
+    font-weight: var(--graisse-normale);
+    color: var(--couleur-texte-doux);
+    text-underline-offset: 0.2em;
+  }
+</style>

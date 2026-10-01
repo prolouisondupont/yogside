@@ -1,0 +1,44 @@
+---
+// Confirmation après réservation.
+import Base from '../../../layouts/Base.astro';
+import Bouton from '../../../components/Bouton.astro';
+import Recapitulatif from '../../../components/Recapitulatif.astro';
+import { detailReservation, UUID } from '../../../lib/reservation';
+import { reservation as textes } from '../../../contenus/textes';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const { id } = Astro.params;
+if (!id || !UUID.test(id)) return new Response(null, { status: 404 });
+
+const resa = await detailReservation({ id });
+if (!resa) return new Response(null, { status: 404 });
+---
+
+<Base titre="Réservation confirmée — Yogside" basDePage={false}>
+  <section class="conteneur confirmation">
+    <h1>Merci{resa.prenom ? ` ${resa.prenom}` : ''}, c’est réservé !</h1>
+    <Recapitulatif titre={resa.titre} date={resa.date} heureDebut={resa.heure_debut} heureFin={resa.heure_fin} lieu={resa.lieu} />
+    <p>{textes.rappel}</p>
+    {resa.pret_tapis && <p>C’est noté : un tapis vous sera prêté.</p>}
+    <p class="texte-petit texte-doux">{textes.annulation}</p>
+    <!-- Provisoire : le lien d'annulation sera envoyé par mail à l'étape 4 -->
+    <p class="texte-petit">
+      Un empêchement ? <a href={`/annuler/${resa.jeton}`}>Annuler ma réservation</a>
+    </p>
+    <div class="confirmation__actions">
+      <Bouton href="/planning">Retour au planning</Bouton>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .confirmation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+    max-width: calc(36rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-9) var(--espace-section);
+  }
+</style>
