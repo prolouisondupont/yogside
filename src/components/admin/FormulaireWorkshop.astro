@@ -1,0 +1,61 @@
+---
+/** Champs d'un workshop (création et modification). */
+interface Props {
+  lieux: { id: string; nom: string }[];
+  valeurs?: {
+    titre?: string;
+    description?: string | null;
+    lieu_id?: string;
+    date?: string;
+    heure_debut?: string;
+    heure_fin?: string;
+    capacite?: number;
+    tarif?: number | null;
+    publie?: boolean;
+  };
+}
+
+const { lieux, valeurs = {} } = Astro.props;
+const h = (v?: string) => (v ? v.slice(0, 5) : '');
+---
+
+<div class="champ">
+  <label for="titre">Titre<span aria-hidden="true">*</span></label>
+  <input id="titre" name="titre" required maxlength="120" value={valeurs.titre ?? ''} />
+</div>
+<div class="champ">
+  <label for="description">Description</label>
+  <textarea id="description" name="description" rows="3" maxlength="2000">{valeurs.description ?? ''}</textarea>
+</div>
+<div class="grille-champs">
+  <div class="champ">
+    <label for="lieu_id">Lieu<span aria-hidden="true">*</span></label>
+    <select id="lieu_id" name="lieu_id" required>
+      {lieux.map((l) => <option value={l.id} selected={l.id === valeurs.lieu_id}>{l.nom}</option>)}
+    </select>
+  </div>
+  <div class="champ">
+    <label for="date">Date<span aria-hidden="true">*</span></label>
+    <input id="date" name="date" type="date" required value={valeurs.date ?? ''} />
+  </div>
+  <div class="champ">
+    <label for="heure_debut">Début<span aria-hidden="true">*</span></label>
+    <input id="heure_debut" name="heure_debut" type="time" required value={h(valeurs.heure_debut) || '09:30'} />
+  </div>
+  <div class="champ">
+    <label for="heure_fin">Fin<span aria-hidden="true">*</span></label>
+    <input id="heure_fin" name="heure_fin" type="time" required value={h(valeurs.heure_fin) || '12:00'} />
+  </div>
+  <div class="champ">
+    <label for="capacite">Places<span aria-hidden="true">*</span></label>
+    <input id="capacite" name="capacite" type="number" min="1" max="100" required value={valeurs.capacite ?? 12} />
+  </div>
+  <div class="champ">
+    <label for="tarif">Tarif (€, affiché)</label>
+    <input id="tarif" name="tarif" type="number" min="0" step="0.5" value={valeurs.tarif ?? ''} />
+  </div>
+</div>
+<label class="case">
+  <input type="checkbox" name="publie" checked={valeurs.publie ?? false} />
+  Publié : visible sur le site et ouvert aux réservations
+</label>

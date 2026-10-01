@@ -1,0 +1,159 @@
+---
+// Gestion — périodes off : absences de la professeure (un jour ou plusieurs).
+// Les séances concernées sont annulées et les inscrits prévenus par mail ;
+// aucune séance n'est plus générée sur ces dates.
+import Admin from '../../layouts/Admin.astro';
+import Bouton from '../../components/Bouton.astro';
+import { champ, DATE_ISO, exigerAdmin, prevenirInscrits } from '../../lib/admin';
+import { dateComplete, dateCourte } from '../../lib/format';
+import { dateParis } from '../../lib/taches';
+import { UUID } from '../../lib/reservation';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+let message = '';
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  const action = donnees.get('action');
+
+  if (action === 'creer') {
+    const debut = champ(donnees, 'date_debut', 10);
+    const fin = champ(donnees, 'date_fin', 10) || debut;
+    const motif = champ(donnees, 'motif', 300) || null;
+    if (!DATE_ISO.test(debut) || !DATE_ISO.test(fin)) erreur = 'Les dates sont invalides.';
+    else if (fin < debut) erreur = 'La date de fin doit être après la date de début.';
+    else {
+      const { count } = await supabase
+        .from('seances')
+        .select('id', { count: 'exact', head: true })
+        .gte('date', debut)
+        .lte('date', fin)
+        .eq('annulee', false);
+      const { data, error } = await supabase.rpc('creer_periode_off', { p_date_debut: debut, p_date_fin: fin, p_motif: motif });
+      if (error) erreur = 'La période n’a pas pu être enregistrée.';
+      else {
+        const envoyes = await prevenirInscrits(supabase, data ?? [], motif);
+        message = `Période enregistrée. ${count ?? 0} séance${(count ?? 0) > 1 ? 's' : ''} annulée${(count ?? 0) > 1 ? 's' : ''}, ${envoyes} inscrit${envoyes > 1 ? 's' : ''} prévenu${envoyes > 1 ? 's' : ''} par mail.`;
+      }
+    }
+  }
+
+  if (action === 'supprimer') {
+    const id = String(donnees.get('id'));
+    if (UUID.test(id)) {
+      const { error } = await supabase.from('periodes_off').delete().eq('id', id);
+      if (error) erreur = 'La période n’a pas pu être supprimée.';
+      else message = 'Période supprimée : les prochaines séances seront de nouveau générées sur ces dates. Les séances déjà annulées le restent.';
+    }
+  }
+}
+
+const aujourdhui = dateParis();
+const { data: periodes } = await supabase.from('periodes_off').select('*').order('date_debut', { ascending: false });
+const aVenir = (periodes ?? []).filter((p) => p.date_fin >= aujourdhui).reverse();
+const passees = (periodes ?? []).filter((p) => p.date_fin < aujourdhui);
+
+const libelle = (p: { date_debut: string; date_fin: string }) =>
+  p.date_debut === p.date_fin ? dateComplete(p.date_debut) : `du ${dateCourte(p.date_debut)} au ${dateComplete(p.date_fin)}`;
+---
+
+<Admin titre="Périodes off">
+  <h1>Périodes off</h1>
+  <p class="texte-doux">Vacances, absences, jour férié… Les cours de la période sont annulés et les inscrits prévenus automatiquement. Les workshops ne sont pas concernés.</p>
+
+  {message && <div class="message message--info" role="status"><p>{message}</p></div>}
+  {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+
+  <section class="carte-admin" aria-labelledby="titre-creer">
+    <h2 id="titre-creer">Déclarer une absence</h2>
+    <form method="post" class="formulaire" data-confirmer="Annuler tous les cours de cette période et prévenir les inscrits ?">
+      <input type="hidden" name="action" value="creer" />
+      <div class="grille-champs">
+        <div class="champ">
+          <label for="date_debut">Du<span aria-hidden="true">*</span></label>
+          <input id="date_debut" name="date_debut" type="date" required min={aujourdhui} />
+        </div>
+        <div class="champ">
+          <label for="date_fin">Au (vide = un seul jour)</label>
+          <input id="date_fin" name="date_fin" type="date" min={aujourdhui} />
+        </div>
+      </div>
+      <div class="champ">
+        <label for="motif">Motif (affiché aux élèves)</label>
+        <input id="motif" name="motif" maxlength="300" placeholder="Ex. : vacances de Noël" />
+      </div>
+      <div><Bouton type="submit" variante="plein">Enregistrer la période</Bouton></div>
+    </form>
+  </section>
+
+  <section class="carte-admin" aria-labelledby="titre-liste">
+    <h2 id="titre-liste">À venir et en cours</h2>
+    {
+      aVenir.length === 0 ? (
+        <p class="texte-doux">Aucune absence prévue.</p>
+      ) : (
+        <ul class="periodes">
+          {aVenir.map((p) => (
+            <li>
+              <span class="majuscule">
+                <strong>{libelle(p)}</strong>
+                {p.motif && <span class="texte-doux"> — {p.motif}</span>}
+              </span>
+              <form method="post" data-confirmer="Supprimer cette période ? Les séances déjà annulées le resteront.">
+                <input type="hidden" name="action" value="supprimer" />
+                <input type="hidden" name="id" value={p.id} />
+                <button type="submit" class="bouton-lien bouton-lien--danger">Supprimer</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    {
+      passees.length > 0 && (
+        <details class="depliant">
+          <summary>Périodes passées ({passees.length})</summary>
+          <ul class="texte-doux texte-petit">
+            {passees.map((p) => <li>{libelle(p)}{p.motif && ` — ${p.motif}`}</li>)}
+          </ul>
+        </details>
+      )
+    }
+  </section>
+</Admin>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-confirmer]').forEach((f) =>
+    f.addEventListener('submit', (e) => {
+      if (!confirm(f.dataset.confirmer)) e.preventDefault();
+    }),
+  );
+</script>
+
+<style>
+  .periodes {
+    padding: 0;
+    list-style: none;
+  }
+
+  .periodes li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espace-3);
+    padding-block: var(--espace-3);
+    border-top: var(--filet);
+  }
+
+  .majuscule::first-letter {
+    text-transform: uppercase;
+  }
+</style>

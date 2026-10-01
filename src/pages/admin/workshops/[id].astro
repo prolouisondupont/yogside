@@ -1,0 +1,155 @@
+---
+// Gestion — un workshop : inscrits, modification, publication, annulation.
+import Admin from '../../../layouts/Admin.astro';
+import Bouton from '../../../components/Bouton.astro';
+import ListeInscrits from '../../../components/admin/ListeInscrits.astro';
+import FormulaireWorkshop from '../../../components/admin/FormulaireWorkshop.astro';
+import { champ, exigerAdmin, lireWorkshop } from '../../../lib/admin';
+import { envoyerAnnulations } from '../../../lib/taches';
+import { UUID } from '../../../lib/reservation';
+import { dateComplete, heureCourte } from '../../../lib/format';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+const { id } = Astro.params;
+if (!id || !UUID.test(id)) return new Response(null, { status: 404 });
+
+let message = Astro.url.searchParams.get('cree') ? 'Workshop créé.' : '';
+let erreur = '';
+
+const lire = () =>
+  supabase
+    .from('workshops')
+    .select('*, lieu:lieux(nom, adresse, code_postal, ville)')
+    .eq('id', id)
+    .maybeSingle();
+
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  const action = donnees.get('action');
+
+  if (action === 'modifier') {
+    const { valeurs, erreur: e } = lireWorkshop(donnees);
+    const { data: jauge } = await supabase.from('workshops_disponibilite').select('inscrits').eq('id', id).single();
+    if (e) erreur = e;
+    else if (jauge && valeurs.capacite < jauge.inscrits) erreur = `Il y a déjà ${jauge.inscrits} inscrits : le nombre de places ne peut pas être inférieur.`;
+    else {
+      const { error } = await supabase.from('workshops').update(valeurs).eq('id', id);
+      if (error) erreur = 'Les modifications n’ont pas pu être enregistrées.';
+      else message = 'Modifications enregistrées.';
+    }
+  }
+
+  if (action === 'annuler') {
+    const motif = champ(donnees, 'motif', 300) || null;
+    const { data, error } = await supabase.rpc('annuler_workshop', { p_workshop_id: id, p_motif: motif });
+    if (error) erreur = 'Le workshop n’a pas pu être annulé.';
+    else {
+      const { data: w } = await lire();
+      const envoyes = w
+        ? await envoyerAnnulations(data ?? [], { titre: w.titre, date: w.date, heure_debut: w.heure_debut, heure_fin: w.heure_fin, lieu: w.lieu }, motif)
+        : 0;
+      message = `Workshop annulé. ${envoyes} inscrit${envoyes > 1 ? 's' : ''} prévenu${envoyes > 1 ? 's' : ''} par mail.`;
+    }
+  }
+}
+
+const [{ data: w }, { data: inscrits }, { data: lieux }] = await Promise.all([
+  lire(),
+  supabase
+    .from('reservations')
+    .select('id, prenom, nom, email, telephone, pret_tapis, message, statut, created_at, annulee_le')
+    .eq('workshop_id', id)
+    .order('created_at'),
+  supabase.from('lieux').select('id, nom').eq('actif', true).order('nom'),
+]);
+if (!w) return new Response(null, { status: 404 });
+
+const nbConfirmes = (inscrits ?? []).filter((i) => i.statut === 'confirmee').length;
+---
+
+<Admin titre={w.titre}>
+  <a href="/admin/workshops" class="texte-petit">← Tous les workshops</a>
+
+  <div class="entete-admin">
+    <div>
+      <h1>{w.titre}</h1>
+      <p class="texte-doux majuscule">
+        {dateComplete(w.date)} · {heureCourte(w.heure_debut)} – {heureCourte(w.heure_fin)} · {w.lieu?.nom}
+      </p>
+    </div>
+    {
+      w.annule ? (
+        <span class="etiquette etiquette--annule">Annulé{w.motif_annulation ? ` : ${w.motif_annulation}` : ''}</span>
+      ) : w.publie ? (
+        <span class="etiquette">Publié</span>
+      ) : (
+        <span class="etiquette etiquette--brouillon">Brouillon — invisible sur le site</span>
+      )
+    }
+  </div>
+
+  {message && <div class="message message--info" role="status"><p>{message}</p></div>}
+  {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+
+  <ListeInscrits inscrits={inscrits ?? []} capacite={w.capacite} lienCsv={`/admin/export/workshop/${id}`} />
+
+  {
+    !w.annule && (
+      <>
+        <section class="carte-admin">
+          <details class="depliant" open={Boolean(erreur)}>
+            <summary>Modifier le workshop</summary>
+            {nbConfirmes > 0 && (
+              <p class="texte-petit texte-doux">
+                Attention : si vous changez la date, l’horaire ou le lieu, les {nbConfirmes} inscrits ne sont pas prévenus
+                automatiquement.
+              </p>
+            )}
+            <form method="post" class="formulaire">
+              <input type="hidden" name="action" value="modifier" />
+              <FormulaireWorkshop lieux={lieux ?? []} valeurs={w} />
+              <div><Bouton type="submit" variante="plein">Enregistrer</Bouton></div>
+            </form>
+          </details>
+        </section>
+
+        <section class="carte-admin" aria-labelledby="titre-annuler">
+          <h2 id="titre-annuler">Annuler le workshop</h2>
+          <p class="texte-doux">
+            {nbConfirmes > 0
+              ? `Les ${nbConfirmes} inscrit${nbConfirmes > 1 ? 's' : ''} recevront immédiatement un mail avec le motif.`
+              : 'Personne n’est inscrit : aucun mail ne sera envoyé.'}
+          </p>
+          <form method="post" class="formulaire" data-confirmer="Annuler ce workshop et prévenir les inscrits ?">
+            <input type="hidden" name="action" value="annuler" />
+            <div class="champ">
+              <label for="motif">Motif (affiché aux élèves)</label>
+              <input id="motif" name="motif" maxlength="300" />
+            </div>
+            <div><Bouton type="submit" variante="plein">Annuler le workshop</Bouton></div>
+          </form>
+        </section>
+      </>
+    )
+  }
+</Admin>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-confirmer]').forEach((f) =>
+    f.addEventListener('submit', (e) => {
+      if (!confirm(f.dataset.confirmer)) e.preventDefault();
+    }),
+  );
+</script>
+
+<style>
+  .majuscule::first-letter {
+    text-transform: uppercase;
+  }
+</style>

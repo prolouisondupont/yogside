@@ -1,0 +1,182 @@
+---
+// Gestion — planning de la semaine avec les jauges.
+import Admin from '../../layouts/Admin.astro';
+import { ajouterJours, DATE_ISO, exigerAdmin, lundiDe } from '../../lib/admin';
+import { dateCourte, dateLongue, heureCourte } from '../../lib/format';
+import { dateParis } from '../../lib/taches';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+const demande = Astro.url.searchParams.get('semaine');
+const lundi = lundiDe(demande && DATE_ISO.test(demande) ? demande : dateParis());
+const dimanche = ajouterJours(lundi, 6);
+
+const [seances, workshops, lieux] = await Promise.all([
+  supabase.from('seances_disponibilite').select('*').gte('date', lundi).lte('date', dimanche),
+  supabase.from('workshops_disponibilite').select('*').gte('date', lundi).lte('date', dimanche),
+  supabase.from('lieux').select('id, nom'),
+]);
+const nomLieu = new Map((lieux.data ?? []).map((l) => [l.id, l.nom]));
+
+type Ligne = {
+  lien: string;
+  titre: string;
+  date: string;
+  debut: string;
+  fin: string;
+  lieu: string;
+  inscrits: number;
+  capacite: number;
+  annule: boolean;
+  workshop: boolean;
+  publie: boolean;
+};
+
+const lignes: Ligne[] = [
+  ...(seances.data ?? []).map((s) => ({
+    lien: `/admin/seance/${s.id}`, titre: s.nom, date: s.date, debut: s.heure_debut, fin: s.heure_fin,
+    lieu: nomLieu.get(s.lieu_id) ?? '', inscrits: s.inscrits, capacite: s.capacite, annule: s.annulee,
+    workshop: false, publie: true,
+  })),
+  ...(workshops.data ?? []).map((w) => ({
+    lien: `/admin/workshops/${w.id}`, titre: w.titre, date: w.date, debut: w.heure_debut, fin: w.heure_fin,
+    lieu: nomLieu.get(w.lieu_id) ?? '', inscrits: w.inscrits, capacite: w.capacite, annule: w.annule,
+    workshop: true, publie: w.publie,
+  })),
+].sort((a, b) => (a.date + a.debut).localeCompare(b.date + b.debut));
+
+const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(lundi, i));
+const totalInscrits = lignes.reduce((n, l) => n + (l.annule ? 0 : l.inscrits), 0);
+const aujourdhui = dateParis();
+---
+
+<Admin titre="Planning">
+  <div class="entete-admin">
+    <div>
+      <h1>Semaine du {dateCourte(lundi)} au {dateCourte(dimanche)}</h1>
+      <p class="texte-doux">{lignes.filter((l) => !l.annule).length} séances · {totalInscrits} inscriptions</p>
+    </div>
+    <nav class="actions-admin" aria-label="Changer de semaine">
+      <a href={`/admin?semaine=${ajouterJours(lundi, -7)}`}>← Semaine précédente</a>
+      <a href="/admin">Cette semaine</a>
+      <a href={`/admin?semaine=${ajouterJours(lundi, 7)}`}>Semaine suivante →</a>
+    </nav>
+  </div>
+
+  {
+    jours.map((jour) => {
+      const duJour = lignes.filter((l) => l.date === jour);
+      if (duJour.length === 0) return null;
+      return (
+        <section class="carte-admin" aria-label={dateLongue(jour)}>
+          <h2 class="jour">
+            {dateLongue(jour)} {jour === aujourdhui && <span class="etiquette etiquette--or">Aujourd’hui</span>}
+          </h2>
+          <ul class="seances">
+            {duJour.map((l) => (
+              <li>
+                <a href={l.lien} class:list={['seance', { 'seance--annulee': l.annule }]}>
+                  <span class="seance__heure">{heureCourte(l.debut)}</span>
+                  <span class="seance__titre">
+                    <strong>{l.titre}</strong>
+                    {l.workshop && <span class="etiquette">Workshop</span>}
+                    {!l.publie && <span class="etiquette etiquette--brouillon">Brouillon</span>}
+                    <span class="texte-doux">{l.lieu}</span>
+                  </span>
+                  <span class="seance__jauge">
+                    {l.annule ? (
+                      <span class="etiquette etiquette--annule">Annulée</span>
+                    ) : (
+                      <>
+                        <span class="barre-jauge" aria-hidden="true">
+                          <span style={`width: ${Math.min(100, (l.inscrits / l.capacite) * 100)}%`} />
+                        </span>
+                        <span class:list={[{ 'etiquette etiquette--plein': l.inscrits >= l.capacite }]}>
+                          {l.inscrits}/{l.capacite}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })
+  }
+
+  {lignes.length === 0 && <p class="carte-admin texte-doux">Aucune séance cette semaine.</p>}
+</Admin>
+
+<style>
+  .jour::first-letter {
+    text-transform: uppercase;
+  }
+
+  .jour {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-3);
+  }
+
+  .seances {
+    padding: 0;
+    list-style: none;
+  }
+
+  .seance {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--espace-4);
+    padding: var(--espace-3) 0;
+    color: inherit;
+    text-decoration: none;
+    border-top: var(--filet);
+  }
+
+  .seance:hover .seance__titre strong {
+    text-decoration: underline;
+  }
+
+  .seance__heure {
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .seance__titre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--espace-1) var(--espace-3);
+  }
+
+  .seance__titre strong {
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .seance__jauge {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .seance--annulee .seance__heure,
+  .seance--annulee strong {
+    color: var(--couleur-discret);
+    text-decoration: line-through;
+  }
+
+  @media (max-width: 30rem) {
+    .barre-jauge {
+      display: none;
+    }
+  }
+</style>

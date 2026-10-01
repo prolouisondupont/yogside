@@ -1,0 +1,120 @@
+---
+// Gestion — liste des workshops et création.
+import Admin from '../../../layouts/Admin.astro';
+import Bouton from '../../../components/Bouton.astro';
+import FormulaireWorkshop from '../../../components/admin/FormulaireWorkshop.astro';
+import { exigerAdmin, lireWorkshop } from '../../../lib/admin';
+import { dateLongue, heureCourte, prix } from '../../../lib/format';
+import { dateParis } from '../../../lib/taches';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+let erreur = '';
+let saisie: ReturnType<typeof lireWorkshop>['valeurs'] | undefined;
+
+if (Astro.request.method === 'POST') {
+  const { valeurs, erreur: e } = lireWorkshop(await Astro.request.formData());
+  saisie = valeurs;
+  if (e) erreur = e;
+  else {
+    const { data, error } = await supabase.from('workshops').insert(valeurs).select('id').single();
+    if (error) erreur = 'Le workshop n’a pas pu être créé.';
+    else return Astro.redirect(`/admin/workshops/${data.id}?cree=1`, 303);
+  }
+}
+
+const aujourdhui = dateParis();
+const [{ data: workshops }, { data: lieux }] = await Promise.all([
+  supabase.from('workshops_disponibilite').select('*').order('date').order('heure_debut'),
+  supabase.from('lieux').select('id, nom').eq('actif', true).order('nom'),
+]);
+const nomLieu = new Map((lieux ?? []).map((l) => [l.id, l.nom]));
+const aVenir = (workshops ?? []).filter((w) => w.date >= aujourdhui);
+const passes = (workshops ?? []).filter((w) => w.date < aujourdhui).reverse();
+---
+
+<Admin titre="Workshops">
+  <h1>Workshops</h1>
+
+  <section class="carte-admin" aria-labelledby="titre-a-venir">
+    <h2 id="titre-a-venir">À venir</h2>
+    {
+      aVenir.length === 0 ? (
+        <p class="texte-doux">Aucun workshop programmé.</p>
+      ) : (
+        <div class="defile">
+          <table class="table-admin">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Workshop</th>
+                <th scope="col">Lieu</th>
+                <th scope="col">Inscrits</th>
+                <th scope="col">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {aVenir.map((w) => (
+                <tr>
+                  <td>
+                    {dateLongue(w.date)}
+                    <br />
+                    <span class="texte-doux">{heureCourte(w.heure_debut)} – {heureCourte(w.heure_fin)}</span>
+                  </td>
+                  <td>
+                    <a href={`/admin/workshops/${w.id}`}><strong>{w.titre}</strong></a>
+                    {w.tarif != null && <span class="texte-doux"> · {prix(w.tarif)}</span>}
+                  </td>
+                  <td>{nomLieu.get(w.lieu_id)}</td>
+                  <td>{w.inscrits}/{w.capacite}</td>
+                  <td>
+                    {w.annule ? (
+                      <span class="etiquette etiquette--annule">Annulé</span>
+                    ) : w.publie ? (
+                      <span class="etiquette">Publié</span>
+                    ) : (
+                      <span class="etiquette etiquette--brouillon">Brouillon</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="carte-admin" aria-labelledby="titre-creer">
+    <details class="depliant" open={Boolean(erreur)}>
+      <summary id="titre-creer">+ Créer un workshop</summary>
+      {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+      <form method="post" class="formulaire">
+        <FormulaireWorkshop lieux={lieux ?? []} valeurs={saisie} />
+        <div><Bouton type="submit" variante="plein">Créer le workshop</Bouton></div>
+      </form>
+    </details>
+  </section>
+
+  {
+    passes.length > 0 && (
+      <section class="carte-admin">
+        <details class="depliant">
+          <summary>Workshops passés ({passes.length})</summary>
+          <ul class="texte-doux">
+            {passes.map((w) => (
+              <li>
+                <a href={`/admin/workshops/${w.id}`}>{dateLongue(w.date)} — {w.titre}</a> · {w.inscrits} inscrit{w.inscrits > 1 ? 's' : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      </section>
+    )
+  }
+</Admin>

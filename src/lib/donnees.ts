@@ -50,6 +50,7 @@ export type WorkshopDispo = {
   inscrits: number;
   places_restantes: number;
   reservable: boolean;
+  publie: boolean;
 };
 
 function aujourdhuiParis() {

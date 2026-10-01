@@ -15,6 +15,7 @@ const { supabase, utilisateur } = await utilisateurConnecte(Astro.request, Astro
 if (!utilisateur) return Astro.redirect('/connexion?suivant=/mon-espace');
 
 const email = (utilisateur.email ?? '').toLowerCase();
+const { data: estAdmin } = await supabase.rpc('est_admin');
 let message = '';
 let erreur = '';
 let compteSupprime = false;
@@ -140,9 +141,12 @@ const etat = (l: Ligne) =>
               <h1>Mon espace</h1>
               <p class="texte-doux">{email}</p>
             </div>
-            <form method="post" action="/api/deconnexion">
-              <button type="submit" class="lien-discret">Me déconnecter</button>
-            </form>
+            <div class="espace__liens">
+              {estAdmin === true && <a href="/admin" class="lien-discret">Espace de gestion</a>}
+              <form method="post" action="/api/deconnexion">
+                <button type="submit" class="lien-discret">Me déconnecter</button>
+              </form>
+            </div>
           </header>
 
           {message && <div class="message message--info" role="status"><p>{message}</p></div>}
@@ -264,6 +268,11 @@ const etat = (l: Ligne) =>
     align-items: flex-end;
     justify-content: space-between;
     gap: var(--espace-4);
+  }
+
+  .espace__liens {
+    display: flex;
+    gap: var(--espace-5);
   }
 
   .bloc {

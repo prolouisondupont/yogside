@@ -235,6 +235,8 @@ Ce qu'elle doit pouvoir faire :
 - Modifier les créneaux récurrents en début de saison
 - Exporter une liste en CSV
 
+> **Implémentation** (`/admin`, réservé à la table `admins`) : planning hebdomadaire navigable, fiche séance (inscrits, export CSV Excel, capacité, annulation + mails), workshops (brouillon / publié, modification, annulation + mails), périodes off (annulation des séances + mails), créneaux (ajout, modification tant qu'aucune séance n'existe, désactivation, « Préparer la saison suivante » qui recopie les créneaux avec les nouvelles dates) et lieux. Toutes les écritures passent par la session de l'administratrice, donc par le RLS.
+
 Pour les premières semaines, l'interface Supabase suffit à dépanner — mais elle n'est pas pour une non-technicienne, donc la page admin fait partie du périmètre.
 
 ---

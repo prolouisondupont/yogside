@@ -1,0 +1,91 @@
+---
+/** Liste des inscrits d'une séance ou d'un workshop (espace de gestion). */
+interface Inscrit {
+  id: string;
+  prenom: string | null;
+  nom: string | null;
+  email: string | null;
+  telephone: string | null;
+  pret_tapis: boolean;
+  message: string | null;
+  statut: 'confirmee' | 'annulee';
+  created_at: string;
+  annulee_le: string | null;
+}
+
+interface Props {
+  inscrits: Inscrit[];
+  capacite: number;
+  lienCsv: string;
+}
+
+const { inscrits, capacite, lienCsv } = Astro.props;
+const confirmes = inscrits.filter((i) => i.statut === 'confirmee');
+const annules = inscrits.filter((i) => i.statut === 'annulee');
+const tapis = confirmes.filter((i) => i.pret_tapis).length;
+
+const quand = (iso: string) =>
+  new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(new Date(iso));
+---
+
+<section class="carte-admin" aria-labelledby="titre-inscrits">
+  <div class="entete-admin">
+    <h2 id="titre-inscrits">Inscrits · {confirmes.length}/{capacite}</h2>
+    <div class="actions-admin">
+      {tapis > 0 && <span class="etiquette etiquette--or">{tapis} prêt{tapis > 1 ? 's' : ''} de tapis</span>}
+      {confirmes.length > 0 && <a href={lienCsv} download>Exporter en CSV</a>}
+    </div>
+  </div>
+
+  {
+    confirmes.length === 0 ? (
+      <p class="texte-doux">Personne pour l’instant.</p>
+    ) : (
+      <div class="defile">
+        <table class="table-admin">
+          <thead>
+            <tr>
+              <th scope="col">Nom</th>
+              <th scope="col">Contact</th>
+              <th scope="col">Tapis</th>
+              <th scope="col">Message</th>
+              <th scope="col">Réservé le</th>
+            </tr>
+          </thead>
+          <tbody>
+            {confirmes.map((i) => (
+              <tr>
+                <td>
+                  <strong>{`${i.prenom ?? ''} ${i.nom ?? ''}`.trim()}</strong>
+                </td>
+                <td>
+                  <a href={`mailto:${i.email}`}>{i.email}</a>
+                  <br />
+                  <a href={`tel:${i.telephone}`}>{i.telephone}</a>
+                </td>
+                <td>{i.pret_tapis ? <span class="etiquette etiquette--or">Oui</span> : '—'}</td>
+                <td class="texte-doux">{i.message ?? '—'}</td>
+                <td class="texte-doux">{quand(i.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    annules.length > 0 && (
+      <details class="depliant">
+        <summary>{annules.length} annulation{annules.length > 1 ? 's' : ''}</summary>
+        <ul class="texte-doux texte-petit">
+          {annules.map((i) => (
+            <li>
+              {`${i.prenom ?? ''} ${i.nom ?? ''}`.trim() || 'Compte supprimé'} — annulé le {i.annulee_le ? quand(i.annulee_le) : '?'}
+            </li>
+          ))}
+        </ul>
+      </details>
+    )
+  }
+</section>

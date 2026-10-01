@@ -1,0 +1,256 @@
+---
+/**
+ * Mise en page de l'espace de gestion : sobre, lisible sur téléphone,
+ * mêmes variables de design que le site.
+ */
+import '../styles/global.css';
+import Logo from '../assets/marque/logo-yogside.svg';
+
+interface Props {
+  titre: string;
+}
+
+const { titre } = Astro.props;
+const chemin = Astro.url.pathname;
+const onglets = [
+  { href: '/admin', libelle: 'Planning', actif: chemin === '/admin' || chemin.startsWith('/admin/seance') },
+  { href: '/admin/workshops', libelle: 'Workshops', actif: chemin.startsWith('/admin/workshop') },
+  { href: '/admin/periodes-off', libelle: 'Périodes off', actif: chemin.startsWith('/admin/periodes-off') },
+  { href: '/admin/creneaux', libelle: 'Créneaux & lieux', actif: chemin.startsWith('/admin/creneaux') },
+];
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>{titre} — Gestion Yogside</title>
+  </head>
+  <body class="admin">
+    <header class="admin__entete">
+      <div class="conteneur admin__barre">
+        <a href="/admin" class="admin__logo" aria-label="Gestion Yogside">
+          <Logo width={96} height={31} aria-hidden="true" />
+          <span>Gestion</span>
+        </a>
+        <nav aria-label="Gestion">
+          <ul class="admin__onglets">
+            {onglets.map((o) => <li><a href={o.href} aria-current={o.actif ? 'page' : undefined}>{o.libelle}</a></li>)}
+          </ul>
+        </nav>
+        <div class="admin__compte">
+          <a href="/">Voir le site</a>
+          <form method="post" action="/api/deconnexion"><button type="submit">Déconnexion</button></form>
+        </div>
+      </div>
+    </header>
+    <main class="conteneur admin__contenu">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  /* --- Cadre --- */
+  .admin {
+    background: var(--couleur-fond-doux);
+  }
+
+  .admin__entete {
+    background: var(--couleur-blanc);
+    border-bottom: 1px solid #e6e6e3;
+  }
+
+  .admin__barre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espace-4) var(--espace-7);
+    padding-block: var(--espace-4);
+  }
+
+  .admin__logo {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-3);
+    color: var(--couleur-texte-doux);
+    text-decoration: none;
+    font-size: var(--texte-nav);
+  }
+
+  .admin__onglets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espace-1) var(--espace-5);
+    padding: 0;
+    list-style: none;
+  }
+
+  .admin__onglets a {
+    font-size: var(--texte-nav);
+    color: var(--couleur-texte);
+    text-decoration: none;
+    text-underline-offset: 0.4em;
+  }
+
+  .admin__onglets a[aria-current='page'],
+  .admin__onglets a:hover {
+    text-decoration: underline;
+  }
+
+  .admin__compte {
+    display: flex;
+    align-items: center;
+    gap: var(--espace-4);
+    margin-left: auto;
+    font-size: var(--texte-petit);
+  }
+
+  .admin__compte a,
+  .admin__compte button {
+    padding: 0;
+    color: var(--couleur-texte-doux);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .admin__contenu {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-6);
+    max-width: calc(64rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-7) var(--espace-9);
+  }
+
+  .admin h1 {
+    font-size: var(--texte-h2);
+  }
+
+  .admin h2 {
+    font-size: var(--texte-h3);
+  }
+
+  /* --- Cartes --- */
+  .carte-admin {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-4);
+    padding: var(--espace-5);
+    background: var(--couleur-blanc);
+    border: 1px solid #e6e6e3;
+  }
+
+  .entete-admin {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espace-4);
+  }
+
+  /* --- Tableaux --- */
+  .table-admin {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--texte-nav);
+  }
+
+  .table-admin th,
+  .table-admin td {
+    padding: var(--espace-3) var(--espace-3) var(--espace-3) 0;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: var(--filet);
+  }
+
+  .table-admin th {
+    font-weight: var(--graisse-moyenne);
+    color: var(--couleur-texte-doux);
+    font-size: var(--texte-petit);
+  }
+
+  .defile {
+    overflow-x: auto;
+  }
+
+  /* --- Étiquettes --- */
+  .etiquette {
+    display: inline-block;
+    padding: 0.15rem var(--espace-2);
+    font-size: var(--texte-petit);
+    font-weight: var(--graisse-moyenne);
+    white-space: nowrap;
+    background: #ededea;
+  }
+
+  .etiquette--or { background: var(--couleur-or); }
+  .etiquette--plein { color: var(--couleur-blanc); background: var(--couleur-erreur); }
+  .etiquette--annule { color: var(--couleur-blanc); background: #8c8c88; }
+  .etiquette--brouillon { background: #f3e7c0; }
+
+  /* --- Jauge en barre --- */
+  .barre-jauge {
+    position: relative;
+    width: 6rem;
+    height: 0.375rem;
+    background: #e6e6e3;
+  }
+
+  .barre-jauge span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--couleur-noir);
+  }
+
+  /* --- Formulaires compacts --- */
+  .grille-champs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+    gap: var(--espace-4);
+  }
+
+  .admin select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--espace-2) var(--espace-3);
+    background: var(--couleur-blanc);
+    border: 1px solid #dcdcd8;
+    border-radius: 0;
+  }
+
+  .actions-admin {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espace-3);
+  }
+
+  .bouton-lien {
+    padding: 0;
+    font-size: var(--texte-nav);
+    color: var(--couleur-texte);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .bouton-lien--danger {
+    color: var(--couleur-erreur);
+  }
+
+  details.depliant > summary {
+    cursor: pointer;
+    font-weight: var(--graisse-moyenne);
+  }
+
+  details.depliant[open] > summary {
+    margin-bottom: var(--espace-4);
+  }
+</style>

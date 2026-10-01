@@ -1,0 +1,362 @@
+---
+// Gestion — créneaux hebdomadaires et lieux.
+// Règle du projet : un créneau dont les séances existent n'est jamais modifié.
+// À la rentrée, « Préparer la saison suivante » recopie les créneaux avec les
+// nouvelles dates ; on ajuste ensuite les copies tant qu'elles n'ont pas de séances.
+import Admin from '../../layouts/Admin.astro';
+import Bouton from '../../components/Bouton.astro';
+import { champ, DATE_ISO, exigerAdmin, HEURE } from '../../lib/admin';
+import { dateCourte, heureCourte, nomJour } from '../../lib/format';
+import { dateParis, genererSeances } from '../../lib/taches';
+import { UUID } from '../../lib/reservation';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+let message = '';
+let erreur = '';
+
+function lireCreneau(d: FormData) {
+  const v = {
+    nom: champ(d, 'nom', 80),
+    description: champ(d, 'description', 1000) || null,
+    lieu_id: champ(d, 'lieu_id', 40),
+    jour_semaine: Number(d.get('jour_semaine')),
+    heure_debut: champ(d, 'heure_debut', 5),
+    heure_fin: champ(d, 'heure_fin', 5),
+    capacite: Number(d.get('capacite')),
+    saison_debut: champ(d, 'saison_debut', 10),
+    saison_fin: champ(d, 'saison_fin', 10),
+  };
+  let e = '';
+  if (!v.nom) e = 'Le nom du cours est obligatoire.';
+  else if (!(v.jour_semaine >= 1 && v.jour_semaine <= 7)) e = 'Le jour est invalide.';
+  else if (!HEURE.test(v.heure_debut) || !HEURE.test(v.heure_fin) || v.heure_fin <= v.heure_debut) e = 'Les horaires sont invalides.';
+  else if (!Number.isInteger(v.capacite) || v.capacite < 1) e = 'Le nombre de places est invalide.';
+  else if (!DATE_ISO.test(v.saison_debut) || !DATE_ISO.test(v.saison_fin) || v.saison_fin < v.saison_debut) e = 'Les dates de saison sont invalides.';
+  return { v, e };
+}
+
+function lireLieu(d: FormData) {
+  const v = {
+    nom: champ(d, 'nom', 80),
+    adresse: champ(d, 'adresse', 200),
+    code_postal: champ(d, 'code_postal', 10),
+    ville: champ(d, 'ville', 80) || 'Tours',
+  };
+  return { v, e: !v.nom || !v.adresse || !v.code_postal ? 'Nom, adresse et code postal sont obligatoires.' : '' };
+}
+
+if (Astro.request.method === 'POST') {
+  const d = await Astro.request.formData();
+  const action = d.get('action');
+  const id = String(d.get('id') ?? '');
+
+  if (action === 'ajouter' || action === 'modifier') {
+    const { v, e } = lireCreneau(d);
+    if (e) erreur = e;
+    else if (action === 'ajouter') {
+      const { error } = await supabase.from('cours').insert(v);
+      erreur = error ? 'Le créneau n’a pas pu être ajouté.' : '';
+      if (!error) {
+        const nb = await genererSeances().catch(() => 0);
+        message = `Créneau ajouté. ${nb} séance${nb > 1 ? 's' : ''} générée${nb > 1 ? 's' : ''} pour les 8 prochaines semaines.`;
+      }
+    } else if (UUID.test(id)) {
+      const { count } = await supabase.from('seances').select('id', { count: 'exact', head: true }).eq('cours_id', id);
+      if (count) erreur = 'Ce créneau a déjà des séances : il ne peut plus être modifié. Désactivez-le et créez-en un nouveau.';
+      else {
+        const { error } = await supabase.from('cours').update(v).eq('id', id);
+        if (error) erreur = 'Le créneau n’a pas pu être modifié.';
+        else message = 'Créneau modifié.';
+      }
+    }
+  }
+
+  if (action === 'activer' && UUID.test(id)) {
+    const actif = d.get('actif') === 'true';
+    const { error } = await supabase.from('cours').update({ actif }).eq('id', id);
+    if (error) erreur = 'Le créneau n’a pas pu être mis à jour.';
+    else if (actif) {
+      const nb = await genererSeances().catch(() => 0);
+      message = `Créneau réactivé. ${nb} séance${nb > 1 ? 's' : ''} générée${nb > 1 ? 's' : ''}.`;
+    } else message = 'Créneau désactivé : plus aucune nouvelle séance ne sera générée. Les séances déjà prévues restent en place (annulez-les une par une si besoin).';
+  }
+
+  if (action === 'supprimer' && UUID.test(id)) {
+    const { count } = await supabase.from('seances').select('id', { count: 'exact', head: true }).eq('cours_id', id);
+    if (count) erreur = 'Ce créneau a des séances : il ne peut pas être supprimé, seulement désactivé.';
+    else {
+      const { error } = await supabase.from('cours').delete().eq('id', id);
+      if (error) erreur = 'Le créneau n’a pas pu être supprimé.';
+      else message = 'Créneau supprimé.';
+    }
+  }
+
+  if (action === 'nouvelle-saison') {
+    const debut = champ(d, 'saison_debut', 10);
+    const fin = champ(d, 'saison_fin', 10);
+    if (!DATE_ISO.test(debut) || !DATE_ISO.test(fin) || fin <= debut) erreur = 'Les dates de la nouvelle saison sont invalides.';
+    else {
+      const { data: actuels } = await supabase
+        .from('cours')
+        .select('nom, description, lieu_id, jour_semaine, heure_debut, heure_fin, capacite')
+        .eq('actif', true)
+        .gte('saison_fin', dateParis());
+      if (!actuels?.length) erreur = 'Aucun créneau actif à recopier.';
+      else {
+        const { error } = await supabase.from('cours').insert(actuels.map((c) => ({ ...c, saison_debut: debut, saison_fin: fin })));
+        if (error) erreur = 'La nouvelle saison n’a pas pu être préparée.';
+        else message = `${actuels.length} créneaux recopiés pour la saison du ${dateCourte(debut)} au ${dateCourte(fin)}. Ajustez-les ci-dessous tant que leurs séances ne sont pas générées.`;
+      }
+    }
+  }
+
+  if (action === 'lieu-ajouter' || action === 'lieu-modifier') {
+    const { v, e } = lireLieu(d);
+    if (e) erreur = e;
+    else {
+      const { error } =
+        action === 'lieu-ajouter'
+          ? await supabase.from('lieux').insert(v)
+          : await supabase.from('lieux').update({ ...v, actif: d.get('actif') === 'on' }).eq('id', id);
+      if (error) erreur = 'Le lieu n’a pas pu être enregistré.';
+      else message = 'Lieu enregistré.';
+    }
+  }
+}
+
+const aujourdhui = dateParis();
+const [{ data: cours }, { data: lieux }] = await Promise.all([
+  supabase
+    .from('cours')
+    .select('*, lieu:lieux(nom), seances(count)')
+    .gte('saison_fin', aujourdhui)
+    .order('saison_debut')
+    .order('jour_semaine')
+    .order('heure_debut'),
+  supabase.from('lieux').select('*').order('nom'),
+]);
+
+// Regroupement par saison
+const saisons = new Map<string, any[]>();
+for (const c of (cours ?? []) as any[]) {
+  const cle = `${c.saison_debut}|${c.saison_fin}`;
+  saisons.set(cle, [...(saisons.get(cle) ?? []), c]);
+}
+const nomsCours = [...new Set((cours ?? []).map((c: any) => c.nom))];
+const lieuxActifs = (lieux ?? []).filter((l) => l.actif);
+const jours = [1, 2, 3, 4, 5, 6, 7];
+const h = (v: string) => v.slice(0, 5);
+---
+
+<Admin titre="Créneaux & lieux">
+  <h1>Créneaux & lieux</h1>
+
+  {message && <div class="message message--info" role="status"><p>{message}</p></div>}
+  {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+
+  {
+    [...saisons].map(([cle, liste]) => {
+      const [debut, fin] = cle.split('|');
+      return (
+        <section class="carte-admin">
+          <h2>Saison du {dateCourte(debut)} au {dateCourte(fin)}</h2>
+          <ul class="creneaux">
+            {liste.map((c) => {
+              const nbSeances = c.seances?.[0]?.count ?? 0;
+              return (
+                <li class:list={['creneau', { 'creneau--inactif': !c.actif }]}>
+                  <div class="creneau__resume">
+                    <strong>{nomJour(c.jour_semaine)} {heureCourte(c.heure_debut)}–{heureCourte(c.heure_fin)}</strong>
+                    <span>{c.nom}</span>
+                    <span class="texte-doux">{c.lieu?.nom} · {c.capacite} places</span>
+                    {!c.actif && <span class="etiquette etiquette--annule">Désactivé</span>}
+                    {nbSeances === 0 && <span class="etiquette etiquette--brouillon">Modifiable</span>}
+                  </div>
+                  <div class="actions-admin">
+                    {nbSeances === 0 ? (
+                      <>
+                        <details class="depliant">
+                          <summary class="bouton-lien">Modifier</summary>
+                          <form method="post" class="formulaire">
+                            <input type="hidden" name="action" value="modifier" />
+                            <input type="hidden" name="id" value={c.id} />
+                            <div class="grille-champs">
+                              <div class="champ"><label>Cours</label><input name="nom" list="noms-cours" required value={c.nom} /></div>
+                              <div class="champ"><label>Lieu</label><select name="lieu_id">{lieuxActifs.map((l) => <option value={l.id} selected={l.id === c.lieu_id}>{l.nom}</option>)}</select></div>
+                              <div class="champ"><label>Jour</label><select name="jour_semaine">{jours.map((j) => <option value={j} selected={j === c.jour_semaine}>{nomJour(j)}</option>)}</select></div>
+                              <div class="champ"><label>Début</label><input name="heure_debut" type="time" required value={h(c.heure_debut)} /></div>
+                              <div class="champ"><label>Fin</label><input name="heure_fin" type="time" required value={h(c.heure_fin)} /></div>
+                              <div class="champ"><label>Places</label><input name="capacite" type="number" min="1" max="100" value={c.capacite} /></div>
+                              <div class="champ"><label>Saison du</label><input name="saison_debut" type="date" required value={c.saison_debut} /></div>
+                              <div class="champ"><label>au</label><input name="saison_fin" type="date" required value={c.saison_fin} /></div>
+                            </div>
+                            <div class="champ"><label>Description</label><textarea name="description" rows="2">{c.description ?? ''}</textarea></div>
+                            <div><Bouton type="submit" taille="compacte">Enregistrer</Bouton></div>
+                          </form>
+                        </details>
+                        <form method="post" data-confirmer="Supprimer ce créneau ?">
+                          <input type="hidden" name="action" value="supprimer" />
+                          <input type="hidden" name="id" value={c.id} />
+                          <button type="submit" class="bouton-lien bouton-lien--danger">Supprimer</button>
+                        </form>
+                      </>
+                    ) : (
+                      <form method="post" data-confirmer={c.actif ? 'Désactiver ce créneau ? Plus aucune nouvelle séance ne sera générée.' : 'Réactiver ce créneau ?'}>
+                        <input type="hidden" name="action" value="activer" />
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="actif" value={String(!c.actif)} />
+                        <button type="submit" class:list={['bouton-lien', { 'bouton-lien--danger': c.actif }]}>
+                          {c.actif ? 'Désactiver' : 'Réactiver'}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      );
+    })
+  }
+
+  <datalist id="noms-cours">{nomsCours.map((n) => <option value={n} />)}</datalist>
+
+  <section class="carte-admin">
+    <details class="depliant">
+      <summary>+ Ajouter un créneau</summary>
+      <form method="post" class="formulaire">
+        <input type="hidden" name="action" value="ajouter" />
+        <div class="grille-champs">
+          <div class="champ"><label for="a-nom">Cours</label><input id="a-nom" name="nom" list="noms-cours" required placeholder="Hatha flow" /></div>
+          <div class="champ"><label for="a-lieu">Lieu</label><select id="a-lieu" name="lieu_id">{lieuxActifs.map((l) => <option value={l.id}>{l.nom}</option>)}</select></div>
+          <div class="champ"><label for="a-jour">Jour</label><select id="a-jour" name="jour_semaine">{jours.map((j) => <option value={j}>{nomJour(j)}</option>)}</select></div>
+          <div class="champ"><label for="a-debut">Début</label><input id="a-debut" name="heure_debut" type="time" required /></div>
+          <div class="champ"><label for="a-fin">Fin</label><input id="a-fin" name="heure_fin" type="time" required /></div>
+          <div class="champ"><label for="a-places">Places</label><input id="a-places" name="capacite" type="number" min="1" max="100" value="12" /></div>
+          <div class="champ"><label for="a-sdebut">Saison du</label><input id="a-sdebut" name="saison_debut" type="date" required /></div>
+          <div class="champ"><label for="a-sfin">au</label><input id="a-sfin" name="saison_fin" type="date" required /></div>
+        </div>
+        <div class="champ"><label for="a-desc">Description</label><textarea id="a-desc" name="description" rows="2"></textarea></div>
+        <div><Bouton type="submit" variante="plein">Ajouter le créneau</Bouton></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="carte-admin">
+    <details class="depliant">
+      <summary>Préparer la saison suivante</summary>
+      <p class="texte-doux">
+        Recopie tous les créneaux actifs avec les dates de la nouvelle saison. Vous pourrez ensuite modifier ou supprimer
+        les copies, tant que leurs séances ne sont pas générées (8 semaines avant le début).
+      </p>
+      <form method="post" class="formulaire" data-confirmer="Recopier tous les créneaux actifs pour la nouvelle saison ?">
+        <input type="hidden" name="action" value="nouvelle-saison" />
+        <div class="grille-champs">
+          <div class="champ"><label for="ns-debut">Début de saison</label><input id="ns-debut" name="saison_debut" type="date" required /></div>
+          <div class="champ"><label for="ns-fin">Fin de saison</label><input id="ns-fin" name="saison_fin" type="date" required /></div>
+        </div>
+        <div><Bouton type="submit">Recopier les créneaux</Bouton></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="carte-admin" aria-labelledby="titre-lieux">
+    <h2 id="titre-lieux">Lieux</h2>
+    <p class="texte-petit texte-doux">L’adresse complète figure dans les mails de confirmation.</p>
+    <ul class="creneaux">
+      {
+        (lieux ?? []).map((l) => (
+          <li class:list={['creneau', { 'creneau--inactif': !l.actif }]}>
+            <details class="depliant">
+              <summary>
+                <strong>{l.nom}</strong> <span class="texte-doux">— {l.adresse}, {l.code_postal} {l.ville}</span>
+                {!l.actif && <span class="etiquette etiquette--annule">Inactif</span>}
+              </summary>
+              <form method="post" class="formulaire">
+                <input type="hidden" name="action" value="lieu-modifier" />
+                <input type="hidden" name="id" value={l.id} />
+                <div class="grille-champs">
+                  <div class="champ"><label>Nom</label><input name="nom" required value={l.nom} /></div>
+                  <div class="champ"><label>Adresse</label><input name="adresse" required value={l.adresse} /></div>
+                  <div class="champ"><label>Code postal</label><input name="code_postal" required value={l.code_postal} /></div>
+                  <div class="champ"><label>Ville</label><input name="ville" required value={l.ville} /></div>
+                </div>
+                <label class="case"><input type="checkbox" name="actif" checked={l.actif} /> Lieu actif (proposé pour les créneaux et workshops)</label>
+                <div><Bouton type="submit" taille="compacte">Enregistrer</Bouton></div>
+              </form>
+            </details>
+          </li>
+        ))
+      }
+    </ul>
+    <details class="depliant">
+      <summary>+ Ajouter un lieu</summary>
+      <form method="post" class="formulaire">
+        <input type="hidden" name="action" value="lieu-ajouter" />
+        <div class="grille-champs">
+          <div class="champ"><label for="l-nom">Nom</label><input id="l-nom" name="nom" required /></div>
+          <div class="champ"><label for="l-adresse">Adresse</label><input id="l-adresse" name="adresse" required /></div>
+          <div class="champ"><label for="l-cp">Code postal</label><input id="l-cp" name="code_postal" required value="37000" /></div>
+          <div class="champ"><label for="l-ville">Ville</label><input id="l-ville" name="ville" required value="Tours" /></div>
+        </div>
+        <div><Bouton type="submit" taille="compacte">Ajouter le lieu</Bouton></div>
+      </form>
+    </details>
+  </section>
+</Admin>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-confirmer]').forEach((f) =>
+    f.addEventListener('submit', (e) => {
+      if (!confirm(f.dataset.confirmer)) e.preventDefault();
+    }),
+  );
+</script>
+
+<style>
+  .creneaux {
+    padding: 0;
+    list-style: none;
+  }
+
+  .creneau {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--espace-3);
+    padding-block: var(--espace-3);
+    border-top: var(--filet);
+  }
+
+  .creneau > details {
+    flex: 1;
+  }
+
+  .creneau__resume {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--espace-1) var(--espace-3);
+  }
+
+  .creneau__resume strong {
+    min-width: 9.5rem;
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .creneau--inactif {
+    opacity: 0.6;
+  }
+
+  .creneau .actions-admin details[open] {
+    flex-basis: 100%;
+  }
+</style>

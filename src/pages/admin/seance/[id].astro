@@ -1,0 +1,134 @@
+---
+// Gestion — une séance : inscrits, capacité, annulation.
+import Admin from '../../../layouts/Admin.astro';
+import Bouton from '../../../components/Bouton.astro';
+import ListeInscrits from '../../../components/admin/ListeInscrits.astro';
+import { champ, exigerAdmin, prevenirInscrits } from '../../../lib/admin';
+import { UUID } from '../../../lib/reservation';
+import { dateComplete, heureCourte } from '../../../lib/format';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const acces = await exigerAdmin(Astro);
+if ('refus' in acces) return acces.refus;
+const { supabase } = acces;
+
+const { id } = Astro.params;
+if (!id || !UUID.test(id)) return new Response(null, { status: 404 });
+
+let message = '';
+let erreur = '';
+
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  const action = donnees.get('action');
+
+  if (action === 'capacite') {
+    const capacite = Number(donnees.get('capacite'));
+    const { data: actuelle } = await supabase.from('seances_disponibilite').select('inscrits').eq('id', id).single();
+    if (!Number.isInteger(capacite) || capacite < 1 || capacite > 100) erreur = 'Capacité invalide.';
+    else if (actuelle && capacite < actuelle.inscrits) erreur = `Il y a déjà ${actuelle.inscrits} inscrits : la capacité ne peut pas être inférieure.`;
+    else {
+      const { error } = await supabase.from('seances').update({ capacite }).eq('id', id);
+      if (error) erreur = 'La capacité n’a pas pu être modifiée.';
+      else message = `Capacité passée à ${capacite} places.`;
+    }
+  }
+
+  if (action === 'annuler') {
+    const motif = champ(donnees, 'motif', 300) || null;
+    const { data, error } = await supabase.rpc('annuler_seance', { p_seance_id: id, p_motif: motif });
+    if (error) {
+      erreur = 'La séance n’a pas pu être annulée.';
+    } else {
+      const envoyes = await prevenirInscrits(supabase, data ?? [], motif);
+      message = `Séance annulée. ${envoyes} inscrit${envoyes > 1 ? 's' : ''} prévenu${envoyes > 1 ? 's' : ''} par mail.`;
+    }
+  }
+}
+
+const [{ data: s }, { data: inscrits }] = await Promise.all([
+  supabase
+    .from('seances')
+    .select('id, date, capacite, annulee, motif_annulation, cours:cours(nom, heure_debut, heure_fin, lieu:lieux(nom, adresse, code_postal, ville))')
+    .eq('id', id)
+    .maybeSingle(),
+  supabase
+    .from('reservations')
+    .select('id, prenom, nom, email, telephone, pret_tapis, message, statut, created_at, annulee_le')
+    .eq('seance_id', id)
+    .order('created_at'),
+]);
+if (!s) return new Response(null, { status: 404 });
+
+// Forme imbriquée renvoyée par PostgREST
+const seance = s as any;
+const nbConfirmes = (inscrits ?? []).filter((i) => i.statut === 'confirmee').length;
+---
+
+<Admin titre={`${seance.cours.nom} — ${seance.date}`}>
+  <a href={`/admin?semaine=${seance.date}`} class="texte-petit">← Retour au planning</a>
+
+  <div class="entete-admin">
+    <div>
+      <h1>{seance.cours.nom}</h1>
+      <p class="texte-doux majuscule">
+        {dateComplete(seance.date)} · {heureCourte(seance.cours.heure_debut)} – {heureCourte(seance.cours.heure_fin)} · {seance.cours.lieu.nom}
+      </p>
+    </div>
+    {seance.annulee && <span class="etiquette etiquette--annule">Annulée{seance.motif_annulation ? ` : ${seance.motif_annulation}` : ''}</span>}
+  </div>
+
+  {message && <div class="message message--info" role="status"><p>{message}</p></div>}
+  {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+
+  <ListeInscrits inscrits={inscrits ?? []} capacite={seance.capacite} lienCsv={`/admin/export/seance/${id}`} />
+
+  {
+    !seance.annulee && (
+      <>
+        <section class="carte-admin" aria-labelledby="titre-capacite">
+          <h2 id="titre-capacite">Capacité</h2>
+          <form method="post" class="actions-admin">
+            <input type="hidden" name="action" value="capacite" />
+            <label for="capacite">Nombre de places pour cette séance</label>
+            <input id="capacite" name="capacite" type="number" min={Math.max(1, nbConfirmes)} max="100" value={seance.capacite} style="width: 6rem" />
+            <Bouton type="submit" taille="compacte">Enregistrer</Bouton>
+          </form>
+        </section>
+
+        <section class="carte-admin" aria-labelledby="titre-annuler">
+          <h2 id="titre-annuler">Annuler la séance</h2>
+          <p class="texte-doux">
+            {nbConfirmes > 0
+              ? `Les ${nbConfirmes} inscrit${nbConfirmes > 1 ? 's' : ''} recevront immédiatement un mail avec le motif.`
+              : 'Personne n’est inscrit : aucun mail ne sera envoyé.'}
+          </p>
+          <form method="post" class="formulaire" data-confirmer="Annuler cette séance et prévenir les inscrits ?">
+            <input type="hidden" name="action" value="annuler" />
+            <div class="champ">
+              <label for="motif">Motif (affiché aux élèves)</label>
+              <input id="motif" name="motif" placeholder="Ex. : je suis malade, désolée !" maxlength="300" />
+            </div>
+            <div><Bouton type="submit" variante="plein">Annuler la séance</Bouton></div>
+          </form>
+        </section>
+      </>
+    )
+  }
+</Admin>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-confirmer]').forEach((f) =>
+    f.addEventListener('submit', (e) => {
+      if (!confirm(f.dataset.confirmer)) e.preventDefault();
+    }),
+  );
+</script>
+
+<style>
+  .majuscule::first-letter {
+    text-transform: uppercase;
+  }
+</style>
