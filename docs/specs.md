@@ -26,7 +26,8 @@ Ne mets jamais les cours dans Sanity : la capacité et les réservations doivent
 | id | uuid | clé primaire |
 | nom | text | « Work'in Tours », « Colette Gym », « Inspire », « Le Yoga de Priti » |
 | adresse | text | |
-| ville | text | |
+| code_postal | text | l'adresse complète figure dans le mail de confirmation |
+| ville | text | « Tours » par défaut |
 | actif | bool | permet de retirer un lieu sans perdre l'historique |
 
 ### `cours` — les créneaux récurrents
@@ -85,6 +86,7 @@ Les workshops ne sont pas concernés : elle les crée elle-même, au cas par cas
 | capacite | int | |
 | tarif | numeric | affiché seulement, pas d'encaissement |
 | publie | bool | |
+| annule / motif_annulation / annule_le | | annulation d'un workshop, avec mail aux inscrits |
 
 ### `reservations`
 | colonne | type | note |
@@ -100,6 +102,7 @@ Les workshops ne sont pas concernés : elle les crée elle-même, au cas par cas
 | statut | enum | `confirmee` · `annulee` |
 | jeton | uuid | sert au lien d'annulation, unique |
 | annulee_le | timestamptz | |
+| anonymisee_le | timestamptz | rempli à la suppression du compte ; prénom, nom, email et téléphone sont alors vidés |
 | created_at | timestamptz | |
 
 Contrainte à poser : exactement l'un des deux parmi `seance_id` et `workshop_id` doit être rempli.
@@ -148,6 +151,8 @@ Le rôle d'administratrice est porté par cette table, alimentée à la main. Au
 
 Une vue SQL fait tout le travail. Elle est créée avec `security_invoker = true` (sinon, dans Supabase, une vue contourne le RLS des tables) et ne renvoie que des chiffres, jamais de données personnelles. La version finale joint aussi `cours` pour exposer l'heure de début et un booléen `reservable`.
 
+> **Implémentation retenue** (`supabase/migrations/`) : le public n'a aucun accès à `reservations`, donc la vue ne peut pas compter elle-même. Elle appelle `nb_inscrits_seance()` / `nb_inscrits_workshop()`, deux fonctions `security definer` qui ne renvoient qu'un nombre. Les séances annulées restent dans la vue (colonne `annulee`) pour pouvoir les afficher barrées sur le planning. L'esquisse ci-dessous reste valable pour comprendre le principe.
+
 ```sql
 create view seances_disponibilite with (security_invoker = true) as
 select
@@ -164,7 +169,20 @@ group by s.id;
 
 Une vue équivalente, `workshops_disponibilite`, fait la même chose pour les workshops publiés.
 
-La fonction de réservation (`reserver`) gère les deux cas : séance ou workshop. Elle verrouille la ligne concernée (`select … for update`), vérifie qu'elle n'est ni annulée ni commencée, compte les réservations confirmées, puis insère — tout dans la même transaction.
+La fonction de réservation (`reserver`) gère les deux cas : séance ou workshop. Elle verrouille la ligne concernée (`select … for update`), vérifie qu'elle n'est ni annulée ni commencée, compte les réservations confirmées, puis insère — tout dans la même transaction. Elle n'est exécutable qu'avec la clé de service, donc uniquement depuis une route serveur Astro.
+
+Les erreurs sont des codes courts, traduits en français côté front : `cible_invalide`, `donnees_invalides`, `introuvable`, `annulee`, `commencee`, `deja_inscrit`, `complet`.
+
+### Fonctions disponibles
+| fonction | appelée par | rôle |
+|---|---|---|
+| `reserver(...)` | route serveur | réservation transactionnelle |
+| `annuler_par_jeton(jeton)` | route serveur | lien d'annulation du mail |
+| `annuler_ma_reservation(id)` | élève connecté | annulation depuis l'espace élève |
+| `annuler_seance(id, motif)` · `annuler_workshop(id, motif)` | admin | renvoient les réservations à prévenir |
+| `creer_periode_off(debut, fin, motif)` | admin | crée l'absence, annule les séances, renvoie les réservations à prévenir |
+| `generer_seances(jusqu_au?)` | tâche planifiée | 8 semaines par défaut, saute les périodes off, idempotente |
+| `anonymiser_reservations(email)` | route serveur | suppression de compte |
 
 **Attention au point critique :** la vérification de la jauge doit se faire **côté serveur, dans une transaction**, pas dans le navigateur. Sinon deux personnes qui réservent la douzième place en même temps passent toutes les deux. Une fonction Postgres qui verrouille la ligne de la séance, compte, puis insère — c'est exactement le genre de chose que Webflow ne sait pas faire, et une bonne raison de ce projet.
 
