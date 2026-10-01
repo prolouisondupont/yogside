@@ -1,0 +1,87 @@
+---
+// Connexion par lien magique : on saisit son email, on reçoit un lien.
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+import { cheminSur, envoyerLienConnexion, utilisateurConnecte } from '../lib/auth';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const suivant = cheminSur(Astro.url.searchParams.get('suivant'));
+const { utilisateur } = await utilisateurConnecte(Astro.request, Astro.cookies);
+if (utilisateur && Astro.request.method === 'GET') return Astro.redirect(suivant);
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+let envoye = false;
+let erreur = '';
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  email = String(donnees.get('email') ?? '').trim().toLowerCase();
+  if (donnees.get('site_web')) {
+    envoye = true; // robot : on fait comme si
+  } else if (!EMAIL.test(email)) {
+    erreur = 'Cette adresse email ne semble pas valide.';
+  } else {
+    await envoyerLienConnexion(email, cheminSur(String(donnees.get('suivant') ?? ''))).catch((e) =>
+      console.error('Connexion', e),
+    );
+    envoye = true;
+  }
+}
+
+const lienExpire = Astro.url.searchParams.get('erreur') === 'lien';
+---
+
+<Base titre="Mon espace — connexion — Yogside" basDePage={false}>
+  <section class="conteneur page-formulaire">
+    <h1>Mon espace</h1>
+    {
+      envoye ? (
+        <div class="message message--info" role="status">
+          <p><strong>Vérifiez votre boîte mail.</strong></p>
+          <p>
+            Si l’adresse {email} est valide, vous allez recevoir un lien de connexion. Il est valable une
+            heure et ne fonctionne qu’une fois. Pensez à regarder dans les indésirables.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p class="chapo">
+            Retrouvez vos réservations, annulez en un clic et gagnez du temps à la prochaine inscription.
+            Pas de mot de passe : on vous envoie un lien par email.
+          </p>
+          {lienExpire && (
+            <div class="message message--erreur" role="alert">
+              <p>Ce lien de connexion a expiré ou a déjà servi. Demandez-en un nouveau ci-dessous.</p>
+            </div>
+          )}
+          {erreur && (
+            <div class="message message--erreur" role="alert">
+              <p>{erreur}</p>
+            </div>
+          )}
+          <form method="post" class="formulaire">
+            <div class="champ">
+              <label for="email">Votre email</label>
+              <input id="email" name="email" type="email" required autocomplete="email" value={email} />
+            </div>
+            <input type="hidden" name="suivant" value={suivant} />
+            <div class="piege" aria-hidden="true">
+              <label for="site_web">Ne pas remplir</label>
+              <input id="site_web" name="site_web" tabindex="-1" autocomplete="off" />
+            </div>
+            <div>
+              <Bouton type="submit" variante="plein">Recevoir mon lien</Bouton>
+            </div>
+          </form>
+          <p class="texte-petit texte-doux">
+            Le compte est facultatif : vous pouvez toujours réserver sans compte. Si vous avez déjà réservé avec
+            cette adresse, vos réservations apparaîtront automatiquement.
+          </p>
+        </>
+      )
+    }
+  </section>
+</Base>

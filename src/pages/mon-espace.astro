@@ -1,0 +1,340 @@
+---
+// Espace élève : réservations à venir et passées, profil, suppression du compte.
+// Les lectures passent par la session de l'élève (RLS : uniquement ses données).
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+import { utilisateurConnecte } from '../lib/auth';
+import { supabaseService } from '../lib/supabase';
+import { dateComplete, heureCourte, maintenantParis } from '../lib/format';
+import { reservation as textes } from '../contenus/textes';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const { supabase, utilisateur } = await utilisateurConnecte(Astro.request, Astro.cookies);
+if (!utilisateur) return Astro.redirect('/connexion?suivant=/mon-espace');
+
+const email = (utilisateur.email ?? '').toLowerCase();
+let message = '';
+let erreur = '';
+let compteSupprime = false;
+
+// --- Actions ---
+if (Astro.request.method === 'POST') {
+  const donnees = await Astro.request.formData();
+  const action = donnees.get('action');
+
+  if (action === 'annuler') {
+    const { error } = await supabase.rpc('annuler_ma_reservation', { p_reservation_id: String(donnees.get('id')) });
+    if (error) erreur = 'Cette réservation n’a pas pu être annulée.';
+    else message = 'Votre réservation est annulée, votre place est libérée. Merci !';
+  }
+
+  if (action === 'profil') {
+    const texte = (cle: string) => String(donnees.get(cle) ?? '').trim().slice(0, 80) || null;
+    const { error } = await supabase
+      .from('profils')
+      .update({ prenom: texte('prenom'), nom: texte('nom'), telephone: texte('telephone') })
+      .eq('id', utilisateur.id);
+    if (error) erreur = 'Votre profil n’a pas pu être enregistré.';
+    else message = 'Profil enregistré. Il pré-remplira vos prochaines réservations.';
+  }
+
+  if (action === 'supprimer') {
+    if (donnees.get('confirmer') !== 'on') {
+      erreur = 'Cochez la case de confirmation pour supprimer votre compte.';
+    } else {
+      // Réservations à venir annulées et données personnelles effacées, puis compte supprimé
+      const db = supabaseService();
+      await db.rpc('anonymiser_reservations', { p_email: email });
+      await supabase.auth.signOut();
+      const { error } = await db.auth.admin.deleteUser(utilisateur.id);
+      if (error) {
+        console.error('Suppression de compte', error);
+        erreur = 'La suppression n’a pas pu aboutir. Contactez-moi pour que je la fasse.';
+      } else {
+        compteSupprime = true;
+      }
+    }
+  }
+}
+
+// --- Lectures ---
+type Ligne = {
+  id: string;
+  statut: 'confirmee' | 'annulee';
+  pret_tapis: boolean;
+  titre: string;
+  date: string;
+  heure_debut: string;
+  heure_fin: string;
+  lieu: string;
+  seanceAnnulee: boolean;
+  motif: string | null;
+};
+
+let aVenir: Ligne[] = [];
+let historique: Ligne[] = [];
+let profil = { prenom: '', nom: '', telephone: '' };
+
+if (!compteSupprime) {
+  const [resas, prof] = await Promise.all([
+    supabase
+      .from('reservations')
+      .select(
+        `id, statut, pret_tapis,
+         seance:seances(date, annulee, motif_annulation, cours:cours(nom, heure_debut, heure_fin, lieu:lieux(nom))),
+         workshop:workshops(titre, date, heure_debut, heure_fin, annule, motif_annulation, lieu:lieux(nom))`,
+      )
+      .eq('email', email),
+    supabase.from('profils').select('prenom, nom, telephone').eq('id', utilisateur.id).maybeSingle(),
+  ]);
+
+  profil = { prenom: prof.data?.prenom ?? '', nom: prof.data?.nom ?? '', telephone: prof.data?.telephone ?? '' };
+
+  // Forme imbriquée renvoyée par PostgREST
+  const lignes: Ligne[] = ((resas.data ?? []) as any[])
+    .map((r) =>
+      r.seance
+        ? {
+            id: r.id, statut: r.statut, pret_tapis: r.pret_tapis,
+            titre: r.seance.cours.nom, date: r.seance.date,
+            heure_debut: r.seance.cours.heure_debut, heure_fin: r.seance.cours.heure_fin,
+            lieu: r.seance.cours.lieu.nom, seanceAnnulee: r.seance.annulee, motif: r.seance.motif_annulation,
+          }
+        : r.workshop
+          ? {
+              id: r.id, statut: r.statut, pret_tapis: r.pret_tapis,
+              titre: r.workshop.titre, date: r.workshop.date,
+              heure_debut: r.workshop.heure_debut, heure_fin: r.workshop.heure_fin,
+              lieu: r.workshop.lieu.nom, seanceAnnulee: r.workshop.annule, motif: r.workshop.motif_annulation,
+            }
+          : null,
+    )
+    .filter((l): l is Ligne => l !== null)
+    .sort((a, b) => (a.date + a.heure_debut).localeCompare(b.date + b.heure_debut));
+
+  const maintenant = maintenantParis();
+  const debut = (l: Ligne) => `${l.date}T${l.heure_debut.slice(0, 5)}`;
+  aVenir = lignes.filter((l) => l.statut === 'confirmee' && !l.seanceAnnulee && debut(l) > maintenant);
+  historique = lignes.filter((l) => !aVenir.includes(l)).reverse();
+}
+
+const etat = (l: Ligne) =>
+  l.statut === 'annulee' ? 'Annulée par vous' : l.seanceAnnulee ? `Séance annulée${l.motif ? ` : ${l.motif}` : ''}` : 'Effectuée';
+---
+
+<Base titre="Mon espace — Yogside" basDePage={false}>
+  <section class="conteneur espace">
+    {
+      compteSupprime ? (
+        <div class="pile">
+          <h1>Votre compte est supprimé</h1>
+          <p>Vos réservations à venir ont été annulées et vos données personnelles effacées. Au plaisir de vous revoir sur le tapis !</p>
+          <div><Bouton href="/">Retour à l’accueil</Bouton></div>
+        </div>
+      ) : (
+        <>
+          <header class="espace__entete">
+            <div>
+              <h1>Mon espace</h1>
+              <p class="texte-doux">{email}</p>
+            </div>
+            <form method="post" action="/api/deconnexion">
+              <button type="submit" class="lien-discret">Me déconnecter</button>
+            </form>
+          </header>
+
+          {message && <div class="message message--info" role="status"><p>{message}</p></div>}
+          {erreur && <div class="message message--erreur" role="alert"><p>{erreur}</p></div>}
+
+          <section class="bloc" aria-labelledby="titre-a-venir">
+            <h2 id="titre-a-venir">Mes prochaines séances</h2>
+            {aVenir.length === 0 ? (
+              <p class="texte-doux">
+                Aucune réservation à venir. <a href="/planning">Voir le planning</a>
+              </p>
+            ) : (
+              <ul class="liste">
+                {aVenir.map((l) => (
+                  <li class="ligne">
+                    <div>
+                      <strong>{l.titre}</strong>
+                      <span class="ligne__date">{dateComplete(l.date)}</span>
+                      <span class="texte-doux">
+                        {heureCourte(l.heure_debut)} – {heureCourte(l.heure_fin)} · {l.lieu}
+                        {l.pret_tapis && ' · prêt de tapis'}
+                      </span>
+                    </div>
+                    <form method="post" data-confirmer="Annuler cette réservation ?">
+                      <input type="hidden" name="action" value="annuler" />
+                      <input type="hidden" name="id" value={l.id} />
+                      <button type="submit" class="lien-discret">Annuler</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p class="texte-petit texte-doux">{textes.annulation}</p>
+          </section>
+
+          {historique.length > 0 && (
+            <section class="bloc" aria-labelledby="titre-historique">
+              <h2 id="titre-historique">Historique</h2>
+              <ul class="liste">
+                {historique.map((l) => (
+                  <li class="ligne ligne--passee">
+                    <div>
+                      <strong>{l.titre}</strong>
+                      <span class="ligne__date">{dateComplete(l.date)}</span>
+                      <span class="texte-doux">{heureCourte(l.heure_debut)} · {l.lieu}</span>
+                    </div>
+                    <span class="texte-petit texte-doux">{etat(l)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section class="bloc" aria-labelledby="titre-profil">
+            <h2 id="titre-profil">Mon profil</h2>
+            <p class="texte-petit texte-doux">Ces informations pré-remplissent le formulaire de réservation.</p>
+            <form method="post" class="formulaire">
+              <input type="hidden" name="action" value="profil" />
+              <div class="formulaire__ligne">
+                <div class="champ">
+                  <label for="prenom">Prénom</label>
+                  <input id="prenom" name="prenom" autocomplete="given-name" value={profil.prenom} />
+                </div>
+                <div class="champ">
+                  <label for="nom">Nom</label>
+                  <input id="nom" name="nom" autocomplete="family-name" value={profil.nom} />
+                </div>
+              </div>
+              <div class="champ">
+                <label for="telephone">Téléphone</label>
+                <input id="telephone" name="telephone" type="tel" autocomplete="tel" value={profil.telephone} />
+              </div>
+              <div><Bouton type="submit">Enregistrer</Bouton></div>
+            </form>
+          </section>
+
+          <section class="bloc bloc--danger" aria-labelledby="titre-suppression">
+            <h2 id="titre-suppression">Supprimer mon compte</h2>
+            <p class="texte-doux">
+              Vos réservations à venir seront annulées, et vos nom, email et téléphone effacés de toutes vos
+              réservations passées. Cette action est définitive.
+            </p>
+            <form method="post" class="formulaire">
+              <input type="hidden" name="action" value="supprimer" />
+              <label class="case">
+                <input type="checkbox" name="confirmer" required />
+                Je confirme vouloir supprimer mon compte
+              </label>
+              <div><Bouton type="submit">Supprimer mon compte</Bouton></div>
+            </form>
+          </section>
+        </>
+      )
+    }
+  </section>
+</Base>
+
+<script>
+  // Petite confirmation avant d'annuler une réservation
+  document.querySelectorAll<HTMLFormElement>('form[data-confirmer]').forEach((f) =>
+    f.addEventListener('submit', (e) => {
+      if (!confirm(f.dataset.confirmer)) e.preventDefault();
+    }),
+  );
+</script>
+
+<style>
+  .espace {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-7);
+    max-width: calc(44rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-9) var(--espace-section);
+  }
+
+  .espace__entete {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--espace-4);
+  }
+
+  .bloc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-4);
+  }
+
+  .bloc h2 {
+    padding-bottom: var(--espace-3);
+    font-size: var(--texte-h3);
+    border-bottom: var(--bordure-fine);
+  }
+
+  .liste {
+    padding: 0;
+    list-style: none;
+  }
+
+  .ligne {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espace-4);
+    padding-block: var(--espace-4);
+    border-bottom: var(--filet);
+  }
+
+  .ligne > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-1);
+  }
+
+  .ligne strong {
+    font-weight: var(--graisse-moyenne);
+  }
+
+  .ligne__date::first-letter {
+    text-transform: uppercase;
+  }
+
+  .ligne--passee {
+    color: var(--couleur-texte-doux);
+  }
+
+  .lien-discret {
+    padding: 0;
+    font-size: var(--texte-nav);
+    color: var(--couleur-texte);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .formulaire__ligne {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--espace-4);
+  }
+
+  .bloc--danger h2 {
+    color: var(--couleur-erreur);
+    border-color: var(--couleur-erreur);
+  }
+
+  @media (max-width: 30rem) {
+    .formulaire__ligne {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

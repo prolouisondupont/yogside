@@ -49,3 +49,21 @@ export function prix(montant: number | null) {
 export function lienCarte(adresse: string, codePostal: string, ville: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adresse}, ${codePostal} ${ville}`)}`;
 }
+
+/** Maintenant à Paris, au format "2026-10-02T18:30" (comparable à date + heure) */
+export function maintenantParis() {
+  const parties = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: FUSEAU,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date())
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parties.year}-${parties.month}-${parties.day}T${parties.hour}:${parties.minute}`;
+}

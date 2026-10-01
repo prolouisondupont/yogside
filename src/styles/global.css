@@ -176,3 +176,92 @@ p {
   white-space: nowrap;
   border: 0;
 }
+
+/* --- Formulaires (réservation, connexion, espace élève) --- */
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+}
+
+.champ label span {
+  color: var(--couleur-erreur);
+}
+
+input:not([type='checkbox']),
+textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--espace-2) var(--espace-3);
+  background: var(--couleur-blanc);
+  border: 1px solid #dcdcd8;
+  border-radius: 0;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  border-color: var(--couleur-noir);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-3);
+  cursor: pointer;
+}
+
+.case input {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--couleur-noir);
+}
+
+.message {
+  padding: var(--espace-4) var(--espace-5);
+  border-left: 3px solid;
+}
+
+.message--erreur {
+  color: var(--couleur-erreur);
+  background: #fbf1f0;
+}
+
+.message--info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  background: var(--couleur-fond-doux);
+  border-color: var(--couleur-or);
+}
+
+
+/* Page centrée étroite : réservation, connexion, annulation */
+.page-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-5);
+  max-width: calc(36rem + 2 * var(--marge-laterale));
+  padding-block: var(--espace-9) var(--espace-section);
+}
+
+.formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-5);
+}
+
+/* Champ piège anti-robots, invisible pour les humains */
+.piege {
+  position: absolute;
+  left: -9999px;
+}
+
+input[readonly] {
+  color: var(--couleur-texte-doux);
+  background: var(--couleur-fond-doux);
+}

@@ -1,0 +1,37 @@
+---
+// Arrivée depuis le lien de connexion reçu par mail.
+// GET affiche un bouton, POST ouvre la session : les antivirus de messagerie
+// qui « visitent » les liens ne peuvent ainsi pas consommer le lien à la place
+// de l'élève.
+import Base from '../../layouts/Base.astro';
+import Bouton from '../../components/Bouton.astro';
+import { cheminSur, clientSession } from '../../lib/auth';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const tokenHash = Astro.url.searchParams.get('token_hash') ?? '';
+const suivant = cheminSur(Astro.url.searchParams.get('suivant'));
+
+if (!tokenHash) return Astro.redirect('/connexion');
+
+if (Astro.request.method === 'POST') {
+  const supabase = clientSession(Astro.request, Astro.cookies);
+  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+  if (error) {
+    console.error('Confirmation du lien', error.message);
+    return Astro.redirect(`/connexion?erreur=lien&suivant=${encodeURIComponent(suivant)}`, 303);
+  }
+  return Astro.redirect(suivant, 303);
+}
+---
+
+<Base titre="Connexion — Yogside" basDePage={false}>
+  <section class="conteneur page-formulaire">
+    <h1>Bienvenue !</h1>
+    <p>Un dernier clic pour accéder à votre espace.</p>
+    <form method="post">
+      <Bouton type="submit" variante="plein">Me connecter</Bouton>
+    </form>
+  </section>
+</Base>

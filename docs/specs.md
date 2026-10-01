@@ -198,7 +198,7 @@ Les erreurs sont des codes courts, traduits en français côté front : `cible_i
 
 **À l'élève, si la séance est annulée :** information immédiate avec le motif (annulation ponctuelle ou période off).
 
-**À l'élève, connexion :** le lien magique est envoyé par Supabase Auth. On le fait passer par le SMTP de Resend, avec un modèle de mail en français.
+**À l'élève, connexion :** le lien magique est généré côté serveur (`auth.admin.generateLink`) puis envoyé par Resend avec notre propre modèle en français. Aucun réglage SMTP chez Supabase. Le lien mène à une page avec un bouton « Me connecter » (POST) pour que les antivirus de messagerie ne consomment pas le lien. Un lien par minute et par adresse au maximum (table `limites_envoi`). Cookies de session `httpOnly`.
 
 **À la professeure, à chaque réservation :** nom, email, téléphone, prêt de tapis éventuel, cours concerné, et la jauge mise à jour (« 9/12 »).
 

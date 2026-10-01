@@ -11,6 +11,7 @@ import { prix } from '../../../lib/format';
 import { envoyerMailsReservation, lireFormulaire, reserver, UUID, type Formulaire } from '../../../lib/reservation';
 import { reservation as textes } from '../../../contenus/textes';
 import { liens } from '../../../lib/navigation';
+import { utilisateurConnecte } from '../../../lib/auth';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store');
@@ -23,16 +24,32 @@ if ((type !== 'seance' && type !== 'workshop') || !id || !UUID.test(id)) {
 let erreur = '';
 let valeurs: Formulaire = { prenom: '', nom: '', email: '', telephone: '', pretTapis: false, message: '' };
 
+// Élève connecté·e : formulaire pré-rempli et email verrouillé sur celui du compte,
+// pour que la réservation apparaisse dans son espace
+const { supabase, utilisateur } = await utilisateurConnecte(Astro.request, Astro.cookies);
+const emailCompte = utilisateur?.email?.toLowerCase() ?? '';
+let profil: { prenom: string | null; nom: string | null; telephone: string | null } | null = null;
+if (utilisateur) {
+  const { data } = await supabase.from('profils').select('prenom, nom, telephone').eq('id', utilisateur.id).maybeSingle();
+  profil = data;
+  valeurs = { ...valeurs, prenom: data?.prenom ?? '', nom: data?.nom ?? '', telephone: data?.telephone ?? '', email: emailCompte };
+}
+
 if (Astro.request.method === 'POST') {
   const donnees = await Astro.request.formData();
   // Champ piège invisible : rempli uniquement par les robots
   if (donnees.get('site_web')) return Astro.redirect('/planning', 303);
 
   valeurs = lireFormulaire(donnees);
+  if (emailCompte) valeurs.email = emailCompte;
   const resultat = await reserver(type === 'seance' ? { seanceId: id } : { workshopId: id }, valeurs);
   if (resultat.ok) {
     // Un échec d'envoi ne doit pas faire échouer la réservation (déjà enregistrée)
     await envoyerMailsReservation(resultat.reservation_id, resultat).catch((e) => console.error('Mails de réservation', e));
+    // Première réservation avec un compte : on complète le profil encore vide
+    if (utilisateur && !profil?.prenom && !profil?.nom) {
+      await supabase.from('profils').update({ prenom: valeurs.prenom, nom: valeurs.nom, telephone: valeurs.telephone }).eq('id', utilisateur.id);
+    }
     return Astro.redirect(`/reserver/confirmation/${resultat.reservation_id}`, 303);
   }
   erreur = resultat.message;
@@ -100,7 +117,12 @@ const complet = item.places_restantes <= 0;
           </div>
           <div class="champ">
             <label for="email">Votre email<span aria-hidden="true">*</span></label>
-            <input id="email" name="email" type="email" required autocomplete="email" value={valeurs.email} />
+            <input id="email" name="email" type="email" required autocomplete="email" value={valeurs.email} readonly={Boolean(emailCompte)} />
+            {emailCompte ? (
+              <span class="texte-petit texte-doux">Connecté·e avec ce compte. <a href="/mon-espace">Mon espace</a></span>
+            ) : (
+              <span class="texte-petit texte-doux">Déjà venu·e ? <a href={`/connexion?suivant=${Astro.url.pathname}`}>Connectez-vous</a> pour pré-remplir le formulaire.</span>
+            )}
           </div>
           <div class="champ">
             <label for="telephone">Téléphone<span aria-hidden="true">*</span></label>
@@ -167,69 +189,9 @@ const complet = item.places_restantes <= 0;
     gap: var(--espace-4);
   }
 
-  .champ {
-    display: flex;
-    flex-direction: column;
-    gap: var(--espace-2);
-  }
-
-  .champ label span {
-    color: var(--couleur-erreur);
-  }
-
-  input:not([type='checkbox']),
-  textarea {
-    width: 100%;
-    min-height: 2.75rem;
-    padding: var(--espace-2) var(--espace-3);
-    background: var(--couleur-blanc);
-    border: 1px solid #dcdcd8;
-    border-radius: 0;
-  }
-
-  input:focus-visible,
-  textarea:focus-visible {
-    border-color: var(--couleur-noir);
-  }
-
-  textarea {
-    resize: vertical;
-  }
-
-  .case {
-    display: flex;
-    align-items: center;
-    gap: var(--espace-3);
-    cursor: pointer;
-  }
-
-  .case input {
-    width: 1.125rem;
-    height: 1.125rem;
-    accent-color: var(--couleur-noir);
-  }
-
   .piege {
     position: absolute;
     left: -9999px;
-  }
-
-  .message {
-    padding: var(--espace-4) var(--espace-5);
-    border-left: 3px solid;
-  }
-
-  .message--erreur {
-    color: var(--couleur-erreur);
-    background: #fbf1f0;
-  }
-
-  .message--info {
-    display: flex;
-    flex-direction: column;
-    gap: var(--espace-2);
-    background: var(--couleur-fond-doux);
-    border-color: var(--couleur-or);
   }
 
   @media (max-width: 30rem) {

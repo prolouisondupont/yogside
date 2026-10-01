@@ -139,6 +139,25 @@ export function mailConfirmation(s: Seance, eleve: { prenom: string; pretTapis: 
   };
 }
 
+/** Lien de connexion (élèves et professeure), valable une heure */
+export function mailConnexion(lien: string) {
+  return {
+    objet: 'Votre lien de connexion Yogside',
+    html: gabarit('Votre lien de connexion', [
+      p('Cliquez sur le bouton ci-dessous pour accéder à votre espace Yogside :'),
+      bouton(lien, 'Me connecter'),
+      petit('Ce lien est valable une heure et ne fonctionne qu’une seule fois. Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.'),
+    ].join('')),
+    texte: [
+      'Votre lien de connexion Yogside :',
+      lien,
+      '',
+      'Ce lien est valable une heure et ne fonctionne qu’une seule fois.',
+      'Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.',
+    ].join('\n'),
+  };
+}
+
 /** À l'élève, la veille */
 export function mailRappel(s: Seance, eleve: { prenom: string | null; jeton: string }) {
   return {
