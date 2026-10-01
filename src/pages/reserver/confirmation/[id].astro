@@ -23,10 +23,7 @@ if (!resa) return new Response(null, { status: 404 });
     <p>{textes.rappel}</p>
     {resa.pret_tapis && <p>C’est noté : un tapis vous sera prêté.</p>}
     <p class="texte-petit texte-doux">{textes.annulation}</p>
-    <!-- Provisoire : le lien d'annulation sera envoyé par mail à l'étape 4 -->
-    <p class="texte-petit">
-      Un empêchement ? <a href={`/annuler/${resa.jeton}`}>Annuler ma réservation</a>
-    </p>
+    <p>Un mail de confirmation vous a été envoyé, avec le lien pour annuler en cas d’empêchement.</p>
     <div class="confirmation__actions">
       <Bouton href="/planning">Retour au planning</Bouton>
     </div>

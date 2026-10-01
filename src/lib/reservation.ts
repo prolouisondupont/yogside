@@ -59,6 +59,10 @@ export async function reserver(cible: { seanceId?: string; workshopId?: string }
 export type DetailReservation = {
   id: string;
   prenom: string | null;
+  nom: string | null;
+  email: string | null;
+  telephone: string | null;
+  message: string | null;
   statut: 'confirmee' | 'annulee';
   pret_tapis: boolean;
   jeton: string;
@@ -75,7 +79,7 @@ export async function detailReservation(par: { id?: string; jeton?: string }): P
   const requete = supabaseService()
     .from('reservations')
     .select(
-      `id, prenom, statut, pret_tapis, jeton,
+      `id, prenom, nom, email, telephone, message, statut, pret_tapis, jeton,
        seance:seances(date, annulee, cours:cours(nom, heure_debut, heure_fin, lieu:lieux(nom, adresse, code_postal, ville))),
        workshop:workshops(titre, date, heure_debut, heure_fin, annule, lieu:lieux(nom, adresse, code_postal, ville))`,
     );
@@ -84,7 +88,17 @@ export async function detailReservation(par: { id?: string; jeton?: string }): P
 
   // Forme imbriquée renvoyée par PostgREST
   const r = data as any;
-  const base = { id: r.id, prenom: r.prenom, statut: r.statut, pret_tapis: r.pret_tapis, jeton: r.jeton };
+  const base = {
+    id: r.id,
+    prenom: r.prenom,
+    nom: r.nom,
+    email: r.email,
+    telephone: r.telephone,
+    message: r.message,
+    statut: r.statut,
+    pret_tapis: r.pret_tapis,
+    jeton: r.jeton,
+  };
   if (r.seance) {
     return {
       ...base,
@@ -113,3 +127,17 @@ export async function annulerParJeton(jeton: string) {
 }
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Mails envoyés après une réservation réussie : confirmation à l'élève, notification à la prof */
+export async function envoyerMailsReservation(reservationId: string, jauge: { inscrits: number; capacite: number }) {
+  const { envoyerTous, mailConfirmation, mailNouvelleReservation } = await import('./emails');
+  const r = await detailReservation({ id: reservationId });
+  if (!r || !r.email) return;
+  const seance = { titre: r.titre, date: r.date, heure_debut: r.heure_debut, heure_fin: r.heure_fin, lieu: r.lieu };
+  const eleve = mailConfirmation(seance, { prenom: r.prenom ?? '', pretTapis: r.pret_tapis, jeton: r.jeton });
+  const prof = mailNouvelleReservation(seance, { ...r }, jauge);
+  await envoyerTous([
+    { a: r.email, ...eleve, repondreA: import.meta.env.EMAIL_PROF },
+    { a: import.meta.env.EMAIL_PROF ?? 'info@yogside.com', ...prof, repondreA: r.email },
+  ]);
+}

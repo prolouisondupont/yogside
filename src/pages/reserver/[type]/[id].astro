@@ -8,7 +8,7 @@ import Recapitulatif from '../../../components/Recapitulatif.astro';
 import Jauge from '../../../components/Jauge.astro';
 import { lieux, seance, workshop } from '../../../lib/donnees';
 import { prix } from '../../../lib/format';
-import { lireFormulaire, reserver, UUID, type Formulaire } from '../../../lib/reservation';
+import { envoyerMailsReservation, lireFormulaire, reserver, UUID, type Formulaire } from '../../../lib/reservation';
 import { reservation as textes } from '../../../contenus/textes';
 import { liens } from '../../../lib/navigation';
 
@@ -31,6 +31,8 @@ if (Astro.request.method === 'POST') {
   valeurs = lireFormulaire(donnees);
   const resultat = await reserver(type === 'seance' ? { seanceId: id } : { workshopId: id }, valeurs);
   if (resultat.ok) {
+    // Un échec d'envoi ne doit pas faire échouer la réservation (déjà enregistrée)
+    await envoyerMailsReservation(resultat.reservation_id, resultat).catch((e) => console.error('Mails de réservation', e));
     return Astro.redirect(`/reserver/confirmation/${resultat.reservation_id}`, 303);
   }
   erreur = resultat.message;
