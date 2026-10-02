@@ -1,7 +1,11 @@
 // Une fiche par page du site. Les cours, horaires, lieux et workshops ne sont
 // PAS ici : ils se gèrent dans l'espace de gestion (yogside…/admin).
 import { defineArrayMember, defineField, defineType } from 'sanity';
-import { CogIcon, HomeIcon, CalendarIcon, UserIcon, SparklesIcon } from '@sanity/icons';
+import { CogIcon } from '@sanity/icons/Cog';
+import { HomeIcon } from '@sanity/icons/Home';
+import { CalendarIcon } from '@sanity/icons/Calendar';
+import { UserIcon } from '@sanity/icons/User';
+import { SparklesIcon } from '@sanity/icons/Sparkles';
 
 export const reglages = defineType({
   name: 'reglages',

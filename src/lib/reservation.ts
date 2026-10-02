@@ -131,10 +131,12 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /** Mails envoyés après une réservation réussie : confirmation à l'élève, notification à la prof */
 export async function envoyerMailsReservation(reservationId: string, jauge: { inscrits: number; capacite: number }) {
   const { envoyerTous, mailConfirmation, mailNouvelleReservation } = await import('./emails');
+  const { textesReservation } = await import('./sanity');
+  const textes = await textesReservation();
   const r = await detailReservation({ id: reservationId });
   if (!r || !r.email) return;
   const seance = { titre: r.titre, date: r.date, heure_debut: r.heure_debut, heure_fin: r.heure_fin, lieu: r.lieu };
-  const eleve = mailConfirmation(seance, { prenom: r.prenom ?? '', pretTapis: r.pret_tapis, jeton: r.jeton });
+  const eleve = mailConfirmation(seance, { prenom: r.prenom ?? '', pretTapis: r.pret_tapis, jeton: r.jeton }, textes);
   const prof = mailNouvelleReservation(seance, { ...r }, jauge);
   await envoyerTous([
     { a: r.email, ...eleve, repondreA: import.meta.env.EMAIL_PROF },

@@ -3,7 +3,7 @@
 // adresse, pour ne jamais écrire à une vraie élève par erreur.
 import { Resend } from 'resend';
 import { dateComplete, dateLongue, heureCourte, lienCarte } from './format';
-import { reservation as textes } from '../contenus/textes';
+import type { TextesReservation } from './sanity';
 
 const env = import.meta.env;
 
@@ -113,7 +113,7 @@ const lienAnnulation = (jeton: string) => `${SITE}/annuler/${jeton}`;
 // --- Modèles ---
 
 /** À l'élève, juste après la réservation */
-export function mailConfirmation(s: Seance, eleve: { prenom: string; pretTapis: boolean; jeton: string }) {
+export function mailConfirmation(s: Seance, eleve: { prenom: string; pretTapis: boolean; jeton: string }, textes: TextesReservation) {
   const objet = `Réservation confirmée — ${s.titre}, ${dateLongue(s.date)} à ${heureCourte(s.heure_debut)}`;
   const tapis = eleve.pretTapis ? 'C’est noté : un tapis vous sera prêté.' : textes.rappel;
   return {
@@ -162,7 +162,7 @@ export function mailConnexion(lien: string) {
 }
 
 /** À l'élève, la veille */
-export function mailRappel(s: Seance, eleve: { prenom: string | null; jeton: string }) {
+export function mailRappel(s: Seance, eleve: { prenom: string | null; jeton: string }, textes: TextesReservation) {
   return {
     objet: `Rappel — ${s.titre} demain à ${heureCourte(s.heure_debut)}`,
     html: gabarit(`À demain${eleve.prenom ? ` ${eleve.prenom}` : ''} !`, [

@@ -4,11 +4,16 @@ import Base from '../layouts/Base.astro';
 import Bouton from '../components/Bouton.astro';
 import CartesCours from '../components/CartesCours.astro';
 import SoleilAnime from '../components/SoleilAnime.astro';
-import { accueil } from '../contenus/textes';
-import photoHero from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-10.jpg';
-import portrait from '../assets/site-actuel/portrait-home-2.png';
+import PhotoSanity from '../components/PhotoSanity.astro';
+import { CACHE_EDITORIAL, pageAccueil } from '../lib/sanity';
 import pastille from '../assets/site-actuel/puce-1.svg';
 import filigrane from '../assets/site-actuel/logo_backgound.png';
+
+// Contenu modifiable dans Sanity (fiche « Accueil »)
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', CACHE_EDITORIAL);
+
+const accueil = await pageAccueil();
 ---
 
 <Base titre="Yogside — cours de yoga à Tours">
@@ -23,10 +28,10 @@ import filigrane from '../assets/site-actuel/logo_backgound.png';
     <div class="ouverture__visuel">
       <Image src={filigrane} alt="" class="ouverture__filigrane" aria-hidden="true" />
       <div class="ouverture__photo" data-parallaxe="2.5">
-        <Image
-          src={photoHero}
-          alt="Mathilde en posture de yoga devant un mur de pierre claire"
-          widths={[700, 1100, 1500]}
+        <PhotoSanity
+          photo={accueil.photoOuverture}
+          largeurs={[700, 1100, 1500]}
+          ratio={576 / 670}
           sizes="(max-width: 64rem) 100vw, 45vw"
           loading="eager"
           data-apparition="fondu"
@@ -42,7 +47,7 @@ import filigrane from '../assets/site-actuel/logo_backgound.png';
       <SoleilAnime taille={72} boucles={3} />
       <h2 id="titre-cours" data-apparition="fondu">{accueil.intro}</h2>
     </div>
-    <CartesCours />
+    {accueil.cartes && <CartesCours cartes={accueil.cartes} />}
     <div class="cours__boutons">
       <Bouton href="/planning" class="grossit">Réserver un cours</Bouton>
       <Bouton href="/cours#planning">Voir le planning</Bouton>
@@ -53,18 +58,13 @@ import filigrane from '../assets/site-actuel/logo_backgound.png';
   <section class="section conteneur mathilde" aria-labelledby="titre-mathilde">
     <div class="mathilde__visuel">
       <div data-parallaxe="2">
-        <Image
-          src={portrait}
-          alt="Portrait de Mathilde, souriante"
-          widths={[500, 800, 1068]}
-          sizes="(max-width: 64rem) 100vw, 40vw"
-        />
+        <PhotoSanity photo={accueil.mathildePortrait} largeurs={[500, 800, 1068]} sizes="(max-width: 64rem) 100vw, 40vw" />
       </div>
     </div>
     <div class="mathilde__texte pile">
       <Image src={pastille} alt="" class="mathilde__pastille" data-rotation="-1" aria-hidden="true" />
-      <h2 id="titre-mathilde" data-apparition="fondu-haut">{accueil.mathilde.titre}</h2>
-      <p class="chapo">{accueil.mathilde.texte}</p>
+      <h2 id="titre-mathilde" data-apparition="fondu-haut">{accueil.mathildeTitre}</h2>
+      <p class="chapo">{accueil.mathildeTexte}</p>
       <div><Bouton href="/a-propos">Mon parcours</Bouton></div>
     </div>
   </section>

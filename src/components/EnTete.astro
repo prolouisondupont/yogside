@@ -9,6 +9,13 @@ import Logo from '../assets/marque/logo-yogside.svg';
 import Instagram from '../assets/marque/instagram.svg';
 import Facebook from '../assets/marque/facebook.svg';
 import { liens } from '../lib/navigation';
+import type { Reglages } from '../lib/sanity';
+
+interface Props {
+  reglages: Reglages;
+}
+
+const { reglages } = Astro.props;
 
 const cheminActuel = Astro.url.pathname;
 const estActif = (href: string) => cheminActuel === href || cheminActuel.startsWith(`${href}/`);
@@ -45,13 +52,17 @@ const estActif = (href: string) => cheminActuel === href || cheminActuel.startsW
 
       <div class="en-tete__secondaire">
         <a href="/mon-espace">Mon espace</a>
-        <a href={`mailto:${liens.email}`}>Me contacter</a>
-        <a href={liens.reseaux.instagram} aria-label="Instagram" class="en-tete__icone">
-          <Instagram aria-hidden="true" />
-        </a>
-        <a href={liens.reseaux.facebook} aria-label="Facebook" class="en-tete__icone">
-          <Facebook aria-hidden="true" />
-        </a>
+        <a href={`mailto:${reglages.email}`}>Me contacter</a>
+        {reglages.instagram && (
+          <a href={reglages.instagram} aria-label="Instagram" class="en-tete__icone">
+            <Instagram aria-hidden="true" />
+          </a>
+        )}
+        {reglages.facebook && (
+          <a href={reglages.facebook} aria-label="Facebook" class="en-tete__icone">
+            <Facebook aria-hidden="true" />
+          </a>
+        )}
         <Bouton href={liens.reservation.href} variante="plein" taille="compacte" class="grossit">
           {liens.reservation.libelle}
         </Bouton>

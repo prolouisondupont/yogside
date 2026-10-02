@@ -1,0 +1,49 @@
+---
+/**
+ * Affiche un texte riche Sanity : paragraphes, listes à puces, gras, italique,
+ * liens. Volontairement limité à ce que propose le Studio.
+ */
+import type { Bloc } from '../lib/sanity';
+
+interface Props {
+  blocs: Bloc[] | undefined;
+  /** Balise de chaque paragraphe (li pour une liste déjà ouverte par le parent) */
+  as?: 'p' | 'li';
+}
+
+const { blocs = [], as: Balise = 'p' } = Astro.props;
+
+// Les éléments de liste consécutifs sont regroupés dans un même <ul>
+type Groupe = { liste: false; bloc: Bloc } | { liste: true; blocs: Bloc[] };
+const groupes: Groupe[] = [];
+for (const b of blocs) {
+  const dernier = groupes.at(-1);
+  if (b.listItem === 'bullet') {
+    if (dernier?.liste) dernier.blocs.push(b);
+    else groupes.push({ liste: true, blocs: [b] });
+  } else groupes.push({ liste: false, bloc: b });
+}
+
+const lienDe = (b: Bloc, marque: string) => b.markDefs?.find((d) => d._key === marque)?.href;
+const externe = (href?: string) => href?.startsWith('http');
+---
+
+{
+  groupes.map((g) => {
+    const rendu = (b: Bloc) =>
+      b.children.map((c) => {
+        const marques = c.marks ?? [];
+        const lien = marques.map((m) => lienDe(b, m)).find(Boolean);
+        let contenu: any = c.text;
+        if (marques.includes('em')) contenu = <em>{contenu}</em>;
+        if (marques.includes('strong')) contenu = <strong>{contenu}</strong>;
+        if (lien) contenu = <a href={lien} target={externe(lien) ? '_blank' : undefined} rel={externe(lien) ? 'noopener' : undefined}>{contenu}</a>;
+        return contenu;
+      });
+    return g.liste ? (
+      <ul>{g.blocs.map((b) => <li>{rendu(b)}</li>)}</ul>
+    ) : (
+      <Balise>{rendu(g.bloc)}</Balise>
+    );
+  })
+}

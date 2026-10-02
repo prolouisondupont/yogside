@@ -4,10 +4,11 @@ import Base from '../../../layouts/Base.astro';
 import Bouton from '../../../components/Bouton.astro';
 import Recapitulatif from '../../../components/Recapitulatif.astro';
 import { detailReservation, UUID } from '../../../lib/reservation';
-import { reservation as textes } from '../../../contenus/textes';
+import { textesReservation } from '../../../lib/sanity';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store');
+const textes = await textesReservation();
 
 const { id } = Astro.params;
 if (!id || !UUID.test(id)) return new Response(null, { status: 404 });

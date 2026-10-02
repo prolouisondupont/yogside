@@ -1,6 +1,6 @@
-// Textes du site actuel (yogside.com), repris tels quels.
-// Provisoire : ces contenus migreront dans Sanity à l'étape 6.
-// Seules les fautes évidentes ont été corrigées (« connecter au ressentit » → « connecté au ressenti »).
+// Textes du site actuel (yogside.com) au 01/10/2026, repris tels quels.
+// Ne sert plus qu'au script d'import initial vers Sanity : le site lit désormais
+// ses contenus dans Sanity. Seules les fautes évidentes ont été corrigées.
 
 export const descriptions = {
   'Hatha flow':

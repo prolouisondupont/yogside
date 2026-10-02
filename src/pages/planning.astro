@@ -4,11 +4,12 @@ import Base from '../layouts/Base.astro';
 import Jauge from '../components/Jauge.astro';
 import { lieux, seancesAVenir, workshopsAVenir } from '../lib/donnees';
 import { dateLongue, heureCourte } from '../lib/format';
-import { reservation } from '../contenus/textes';
+import { textesReservation } from '../lib/sanity';
 
 export const prerender = false;
 // Les jauges doivent rester fraîches : pas de cache partagé
 Astro.response.headers.set('Cache-Control', 'no-store');
+const textes = await textesReservation();
 
 const JOURS = 28;
 const [seances, workshops, tousLesLieux] = await Promise.all([seancesAVenir(JOURS), workshopsAVenir(), lieux()]);
@@ -70,7 +71,7 @@ const commence = (l: Ligne) => !l.reservable && !l.annule && l.placesRestantes >
 <Base titre="Planning — Yogside" description="Planning des cours de yoga à Tours et réservation en ligne.">
   <section class="conteneur conteneur-etroit entete pile">
     <h1 data-apparition="fondu-haut">Planning</h1>
-    <p class="chapo">Choisissez une séance pour réserver votre place. {reservation.rappel}</p>
+    <p class="chapo">Choisissez une séance pour réserver votre place. {textes.rappel}</p>
   </section>
 
   <section class="conteneur conteneur-etroit jours">

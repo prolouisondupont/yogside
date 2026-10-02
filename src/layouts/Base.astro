@@ -4,6 +4,7 @@ import EnTete from '../components/EnTete.astro';
 import PiedDePage from '../components/PiedDePage.astro';
 import BandePhotos from '../components/BandePhotos.astro';
 import Newsletter from '../components/Newsletter.astro';
+import { reglages as lireReglages } from '../lib/sanity';
 
 interface Props {
   titre: string;
@@ -17,6 +18,8 @@ const {
   description = 'Cours de yoga à Tours : Hatha flow, Vinyasa et workshops avec Mathilde Bertrand.',
   basDePage = true,
 } = Astro.props;
+
+const reglages = await lireReglages();
 ---
 
 <!doctype html>
@@ -33,19 +36,19 @@ const {
     <script is:inline>document.documentElement.classList.add('js');</script>
   </head>
   <body>
-    <EnTete />
+    <EnTete reglages={reglages} />
     <main>
       <slot />
     </main>
     {
       basDePage && (
         <div class="bas-de-page">
-          <BandePhotos />
-          <Newsletter />
+          <BandePhotos photos={reglages.bandePhotos ?? []} />
+          <Newsletter titre={reglages.newsletterTitre} texte={reglages.newsletterTexte} />
         </div>
       )
     }
-    <PiedDePage />
+    <PiedDePage reglages={reglages} />
     <script>
       import '../scripts/effets';
     </script>

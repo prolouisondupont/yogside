@@ -1,20 +1,19 @@
 ---
-// Événements : workshops à venir, regroupés par type, lus dans Supabase.
-import { Image } from 'astro:assets';
-import type { ImageMetadata } from 'astro';
+// Événements : dates des workshops (Supabase), habillées par les textes et
+// photos de la fiche « Événements » (Sanity).
 import Base from '../layouts/Base.astro';
+import PhotoSanity from '../components/PhotoSanity.astro';
 import { lieux, workshopsAVenir, type WorkshopDispo } from '../lib/donnees';
 import { dateCourte, heureCourte, prix } from '../lib/format';
-import { evenements } from '../contenus/textes';
+import { pageEvenements } from '../lib/sanity';
 
 export const prerender = false;
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
 
-const [workshops, tousLesLieux] = await Promise.all([workshopsAVenir(), lieux()]);
+const [workshops, tousLesLieux, page] = await Promise.all([workshopsAVenir(), lieux(), pageEvenements()]);
 
-// Photos disponibles, par nom de fichier
-const photos = import.meta.glob<{ default: ImageMetadata }>('../assets/site-actuel/*.{jpg,jpeg,png}', { eager: true });
-const photo = (fichier: string) => Object.entries(photos).find(([chemin]) => chemin.endsWith(`/${fichier}`))?.[1].default;
+// Habillage d'un workshop selon son titre dans l'espace de gestion
+const types = new Map((page.types ?? []).map((t) => [t.titreEnBase.trim().toLowerCase(), t]));
 
 // Regroupement par titre, dans l'ordre de la première date
 const groupes = new Map<string, WorkshopDispo[]>();
@@ -27,7 +26,7 @@ const horaire = (w: WorkshopDispo) => `${enH(w.heure_debut)}-${enH(w.heure_fin)}
 
 <Base titre="Événements — Yogside" description="Workshops et événements de yoga à Tours : prochaines dates et réservation.">
   <section class="conteneur entete">
-    <h1 data-apparition="fondu-haut">{evenements.titre}</h1>
+    <h1 data-apparition="fondu-haut">{page.titre ?? 'Événements à venir'}</h1>
   </section>
 
   {
@@ -36,8 +35,7 @@ const horaire = (w: WorkshopDispo) => `${enH(w.heure_debut)}-${enH(w.heure_fin)}
     ) : (
       <section class="conteneur evenements">
         {[...groupes].map(([titre, dates]) => {
-          const type = evenements.types[titre];
-          const image = type ? photo(type.photo) : undefined;
+          const type = types.get(titre.trim().toLowerCase());
           const lieu = tousLesLieux.get(dates[0].lieu_id);
           return (
             <article class="evenement" data-apparition="fondu">
@@ -65,8 +63,8 @@ const horaire = (w: WorkshopDispo) => `${enH(w.heure_debut)}-${enH(w.heure_fin)}
                 {dates[0].tarif != null && <p class="texte-petit texte-doux">{prix(dates[0].tarif)} · règlement sur place</p>}
               </div>
 
-              {image && (
-                <Image src={image} alt="" widths={[400, 700]} sizes="(max-width: 48rem) 100vw, 28rem" class="evenement__photo" />
+              {type?.photo && (
+                <PhotoSanity photo={type.photo} largeurs={[400, 700]} ratio={1 / 1.1} sizes="(max-width: 48rem) 100vw, 28rem" class="evenement__photo" />
               )}
             </article>
           );
@@ -75,7 +73,7 @@ const horaire = (w: WorkshopDispo) => `${enH(w.heure_debut)}-${enH(w.heure_fin)}
     )
   }
 
-  <p class="conteneur centre texte-petit texte-doux mentions">{evenements.mentions.join(' · ')}</p>
+  {page.mentions?.length ? <p class="conteneur centre texte-petit texte-doux mentions">{page.mentions.join(' · ')}</p> : null}
 </Base>
 
 <style>

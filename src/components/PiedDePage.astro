@@ -7,6 +7,13 @@
 import Logo from '../assets/marque/logo-yogside.svg';
 import SoleilAnime from './SoleilAnime.astro';
 import { liens } from '../lib/navigation';
+import type { Reglages } from '../lib/sanity';
+
+interface Props {
+  reglages: Reglages;
+}
+
+const { reglages } = Astro.props;
 
 const annee = new Date().getFullYear();
 ---
@@ -37,11 +44,12 @@ const annee = new Date().getFullYear();
 
     <div class="pied__contact">
       <ul class="pied__liste">
-        <li><a href={`mailto:${liens.email}`}>{liens.email}</a></li>
+        <li><a href={`mailto:${reglages.email}`}>{reglages.email}</a></li>
+        {reglages.telephone && <li><a href={`tel:${reglages.telephone.replace(/\s/g, '')}`}>{reglages.telephone}</a></li>}
       </ul>
       <ul class="pied__liste">
-        <li><a href={liens.reseaux.instagram}>Instagram</a></li>
-        <li><a href={liens.reseaux.facebook}>Facebook</a></li>
+        {reglages.instagram && <li><a href={reglages.instagram}>Instagram</a></li>}
+        {reglages.facebook && <li><a href={reglages.facebook}>Facebook</a></li>}
       </ul>
     </div>
 

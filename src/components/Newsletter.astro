@@ -5,7 +5,16 @@
  * avec JavaScript, le message s'affiche sans recharger.
  */
 import Bouton from './Bouton.astro';
-import { newsletter } from '../contenus/textes';
+
+interface Props {
+  titre?: string;
+  texte?: string;
+}
+
+const {
+  titre = 'Soyez prévenu des actualités de Yogside 👇',
+  texte = 'Tous les mois, des pensées, des conseils et l’actualité de Yogside dans votre boite mail',
+} = Astro.props;
 
 const statut = Astro.url.searchParams.get('newsletter');
 const messages: Record<string, string> = {
@@ -15,8 +24,8 @@ const messages: Record<string, string> = {
 ---
 
 <section class="newsletter" aria-labelledby="newsletter-titre">
-  <h2 id="newsletter-titre">{newsletter.titre}</h2>
-  <p>{newsletter.texte}</p>
+  <h2 id="newsletter-titre">{titre}</h2>
+  <p>{texte}</p>
 
   <form class="newsletter__formulaire" method="post" action="/api/newsletter" data-newsletter>
     <label for="newsletter-email" class="visuellement-cache">Votre email</label>

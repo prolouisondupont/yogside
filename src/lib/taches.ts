@@ -9,6 +9,7 @@ import {
   type Seance,
   type SeanceRecap,
 } from './emails';
+import { textesReservation } from './sanity';
 
 const COLONNES_LIEU = 'nom, adresse, code_postal, ville';
 const COLONNES_INSCRIT = 'prenom, nom, email, telephone, pret_tapis, message, statut';
@@ -62,9 +63,10 @@ export async function envoyerRappels() {
     })),
   ].filter(({ r }) => r.email);
 
+  const textes = await textesReservation();
   let envoyes = 0;
   for (const { r, s } of aEnvoyer) {
-    const mail = mailRappel(s as Seance, { prenom: r.prenom, jeton: r.jeton });
+    const mail = mailRappel(s as Seance, { prenom: r.prenom, jeton: r.jeton }, textes);
     if (await envoyerTous([{ a: r.email, ...mail, repondreA: import.meta.env.EMAIL_PROF }])) {
       await db.from('reservations').update({ rappel_envoye_le: new Date().toISOString() }).eq('id', r.id);
       envoyes += 1;

@@ -3,28 +3,31 @@
  * Bande de photos en carrousel, présente au bas de toutes les pages du site
  * actuel : 4 photos visibles (2 sur mobile), défilement automatique toutes
  * les 5 s, transition de 500 ms, pause au survol, en boucle.
+ * Photos choisies dans Sanity (Réglages généraux → Bas de page).
  */
-import { Image } from 'astro:assets';
-import photo1 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.49.jpeg';
-import photo2 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.48.jpeg';
-import photo3 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.33.59.jpeg';
-import photo4 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.33.57.jpeg';
-import photo5 from '../assets/site-actuel/WhatsApp-Image-2022-06-23-at-18.29.51.jpeg';
+import PhotoSanity from './PhotoSanity.astro';
+import type { Photo } from '../lib/sanity';
 
-const photos = [photo1, photo2, photo3, photo4, photo5];
+interface Props {
+  photos: Photo[];
+}
+
+const { photos } = Astro.props;
 ---
 
-<section class="bande" aria-label="Photos des cours" data-bande>
-  <div class="bande__piste">
-    {
-      [...photos, ...photos].map((photo, i) => (
-        <div class="bande__photo" aria-hidden={i >= photos.length ? 'true' : undefined}>
-          <Image src={photo} alt="" widths={[400, 800]} sizes="(max-width: 48rem) 50vw, 25vw" />
-        </div>
-      ))
-    }
-  </div>
-</section>
+{
+  photos.length > 0 && (
+    <section class="bande" aria-label="Photos des cours" data-bande>
+      <div class="bande__piste">
+        {[...photos, ...photos].map((photo, i) => (
+          <div class="bande__photo" aria-hidden={i >= photos.length ? 'true' : undefined}>
+            <PhotoSanity photo={photo} largeurs={[400, 800]} ratio={523 / 378} sizes="(max-width: 48rem) 50vw, 25vw" />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 <script>
   const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -73,7 +76,7 @@ const photos = [photo1, photo2, photo3, photo4, photo5];
     aspect-ratio: 378 / 523;
   }
 
-  .bande__photo img {
+  .bande__photo :global(img) {
     width: 100%;
     height: 100%;
     object-fit: cover;

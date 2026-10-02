@@ -6,29 +6,26 @@
  * et la description apparaît avec « En savoir plus ».
  * Sur mobile (pas de survol), chaque carte a sa photo et son texte visibles.
  */
-import { Image } from 'astro:assets';
-import photoHatha from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-26.jpg';
-import photoVinyasa from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-14.jpg';
-import photoWorkshops from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-19.jpg';
-import { descriptions } from '../contenus/textes';
+import PhotoSanity from './PhotoSanity.astro';
+import type { PageAccueil } from '../lib/sanity';
 
-const cartes = [
-  { titre: 'Hatha Flow', texte: descriptions['Hatha flow'], photo: photoHatha, href: '/cours#hatha-flow' },
-  { titre: 'Vinyasa', texte: descriptions.Vinyasa, photo: photoVinyasa, href: '/cours#vinyasa' },
-  { titre: 'Workshops', texte: descriptions.Workshops, photo: photoWorkshops, href: '/evenements' },
-];
+interface Props {
+  cartes: NonNullable<PageAccueil['cartes']>;
+}
+
+const { cartes } = Astro.props;
 ---
 
 <div class="cartes" data-cartes>
   <div class="cartes__fonds" aria-hidden="true">
     {
       cartes.map((carte, i) => (
-        <Image
-          src={carte.photo}
+        <PhotoSanity
+          photo={carte.photo}
           alt=""
-          widths={[800, 1400, 2000]}
+          largeurs={[800, 1400, 2000]}
           sizes="(max-width: 48rem) 100vw, 1400px"
-          class:list={['cartes__fond', { 'est-actif': i === 0 }]}
+          class={i === 0 ? 'cartes__fond est-actif' : 'cartes__fond'}
           data-index={i}
         />
       ))
@@ -38,11 +35,11 @@ const cartes = [
   {
     cartes.map((carte, i) => (
       <article class="carte" data-index={i}>
-        <Image src={carte.photo} alt="" widths={[600, 1000]} sizes="100vw" class="carte__photo-mobile" />
+        <PhotoSanity photo={carte.photo} alt="" largeurs={[600, 1000]} sizes="100vw" class="carte__photo-mobile" />
         <div class="carte__contenu">
           <h3>{carte.titre}</h3>
           <p class="carte__texte">{carte.texte}</p>
-          <a href={carte.href} class="carte__lien">
+          <a href={carte.lien ?? '/cours'} class="carte__lien">
             En savoir plus<span class="visuellement-cache"> sur {carte.titre}</span>
           </a>
         </div>
@@ -82,7 +79,7 @@ const cartes = [
     z-index: -1;
   }
 
-  .cartes__fond {
+  .cartes :global(.cartes__fond) {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -92,7 +89,7 @@ const cartes = [
     transition: opacity 0.6s ease;
   }
 
-  .cartes__fond.est-actif {
+  .cartes :global(.cartes__fond.est-actif) {
     opacity: 1;
   }
 
@@ -113,7 +110,7 @@ const cartes = [
     border-left: 6px solid var(--couleur-fond);
   }
 
-  .carte__photo-mobile {
+  .carte :global(.carte__photo-mobile) {
     display: none;
   }
 
@@ -191,7 +188,7 @@ const cartes = [
       border-left: 0;
     }
 
-    .carte__photo-mobile {
+    .carte :global(.carte__photo-mobile) {
       position: absolute;
       inset: 0;
       z-index: -1;

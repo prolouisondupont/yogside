@@ -6,10 +6,11 @@ import Bouton from '../components/Bouton.astro';
 import { utilisateurConnecte } from '../lib/auth';
 import { supabaseService } from '../lib/supabase';
 import { dateComplete, heureCourte, maintenantParis } from '../lib/format';
-import { reservation as textes } from '../contenus/textes';
+import { textesReservation } from '../lib/sanity';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store');
+const textes = await textesReservation();
 
 const { supabase, utilisateur } = await utilisateurConnecte(Astro.request, Astro.cookies);
 if (!utilisateur) return Astro.redirect('/connexion?suivant=/mon-espace');

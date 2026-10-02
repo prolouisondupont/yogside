@@ -31,7 +31,7 @@ const structure: StructureResolver = (S) =>
 export default defineConfig({
   name: 'yogside',
   title: 'Yogside',
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID ?? '',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID ?? 'vl8aocgi',
   dataset: process.env.SANITY_STUDIO_DATASET ?? 'production',
 
   plugins: [

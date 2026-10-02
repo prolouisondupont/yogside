@@ -1,5 +1,5 @@
 // Liens du site, partagés entre l'en-tête et le pied de page.
-// Même menu que le site actuel ; le bouton « Réserver un cours » mène au planning.
+// Les coordonnées (email, réseaux) viennent des réglages Sanity.
 
 export const liens = {
   principaux: [
@@ -8,10 +8,4 @@ export const liens = {
     { libelle: 'Événements', href: '/evenements' },
   ],
   reservation: { libelle: 'Réserver un cours', href: '/planning' },
-  // Provisoire : ces coordonnées viendront de Sanity
-  email: 'info@yogside.com',
-  reseaux: {
-    instagram: 'https://www.instagram.com/yogside_fr/',
-    facebook: 'https://www.facebook.com/yogside',
-  },
 } as const;

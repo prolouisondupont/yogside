@@ -9,12 +9,12 @@ import Jauge from '../../../components/Jauge.astro';
 import { lieux, seance, workshop } from '../../../lib/donnees';
 import { prix } from '../../../lib/format';
 import { envoyerMailsReservation, lireFormulaire, reserver, UUID, type Formulaire } from '../../../lib/reservation';
-import { reservation as textes } from '../../../contenus/textes';
-import { liens } from '../../../lib/navigation';
+import { textesReservation } from '../../../lib/sanity';
 import { utilisateurConnecte } from '../../../lib/auth';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store');
+const textes = await textesReservation();
 
 const { type, id } = Astro.params;
 if ((type !== 'seance' && type !== 'workshop') || !id || !UUID.test(id)) {
@@ -88,7 +88,7 @@ const complet = item.places_restantes <= 0;
           ) : complet ? (
             <p>
               Cette séance est complète. N’hésitez pas à me contacter directement :{' '}
-              <a href={`mailto:${liens.email}`}>{liens.email}</a>
+              <a href={`mailto:${textes.email}`}>{textes.email}</a>
             </p>
           ) : (
             <p>Cette séance a déjà commencé, il n’est plus possible de réserver.</p>

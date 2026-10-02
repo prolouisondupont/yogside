@@ -3,52 +3,51 @@
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import Bouton from '../components/Bouton.astro';
-import TexteRiche from '../components/TexteRiche.astro';
+import PhotoSanity from '../components/PhotoSanity.astro';
+import TexteSanity from '../components/TexteSanity.astro';
 import { creneauxSaison, parCours } from '../lib/donnees';
 import { heureCourte, lienCarte, nomJour } from '../lib/format';
-import { descriptions, lesCours, tarifs } from '../contenus/textes';
-import photoH from '../assets/site-actuel/H.png';
-import photoV from '../assets/site-actuel/V.png';
-import photoW from '../assets/site-actuel/W.png';
-import photoPhilo from '../assets/site-actuel/mathilde-yogside-juin-2022-ulrike-photographe-tours-26.jpg';
+import { CACHE_EDITORIAL, pageCours } from '../lib/sanity';
 import mouvement from '../assets/site-actuel/mouvement-1.svg';
 import puce from '../assets/site-actuel/puce-1.svg';
 
 export const prerender = false;
-Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+Astro.response.headers.set('Cache-Control', CACHE_EDITORIAL);
 
-const groupes = parCours(await creneauxSaison());
+// Textes et photos : Sanity (fiche « Les cours ») — horaires et lieux : Supabase
+const [page, creneaux] = await Promise.all([pageCours(), creneauxSaison()]);
+const groupes = parCours(creneaux);
 
-const colonnes = [
-  { id: 'hatha-flow', titre: 'Hatha flow', photo: photoH, parallaxe: '2', decalage: false },
-  { id: 'vinyasa', titre: 'Vinyasa', photo: photoV, parallaxe: '-2', decalage: true },
-  { id: 'workshops', titre: 'Workshops', photo: photoW, parallaxe: '2', decalage: false },
-] as const;
+/** « Hatha flow » → « hatha-flow » (ancres #vinyasa, #workshops…) */
+const ancre = (nom: string) => nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+// Colonne du milieu plus haute et en parallaxe inverse, comme sur le site actuel
+const colonnes = (page.presentations ?? []).map((pres, i) => ({ ...pres, id: ancre(pres.nom), parallaxe: i === 1 ? '-2' : '2', decalage: i === 1 }));
 ---
 
 <Base titre="Les cours — Yogside" description="Hatha flow, Vinyasa et workshops à Tours : planning de la saison et tarifs.">
   <section class="intro conteneur conteneur-etroit pile">
-    <h1 data-apparition="fondu-haut">{lesCours.titre}</h1>
-    <p class="chapo" data-apparition="fondu-haut" style="--delai: 150ms">{lesCours.intro}</p>
+    <h1 data-apparition="fondu-haut">{page.titre}</h1>
+    <p class="chapo" data-apparition="fondu-haut" style="--delai: 150ms">{page.intro}</p>
   </section>
 
   <section id="planning" class="conteneur colonnes" aria-label="Les cours et leur planning">
     {
       colonnes.map((col) => {
-        const creneaux = groupes.get(col.titre) ?? [];
+        const creneaux = groupes.get(col.nom) ?? [];
         return (
           <article id={col.id} class:list={['colonne', { 'colonne--haute': col.decalage }]}>
             <div class="colonne__photo" data-parallaxe={col.parallaxe} data-ordi-seulement>
-              <Image src={col.photo} alt="" widths={[400, 644]} sizes="(max-width: 64rem) 100vw, 30vw" class="grossit" />
+              <PhotoSanity photo={col.photo} alt="" largeurs={[400, 644]} ratio={760 / 644} sizes="(max-width: 64rem) 100vw, 30vw" class="grossit" />
             </div>
-            <h2>{col.titre}</h2>
-            <p class="texte-doux">{descriptions[col.titre === 'Workshops' ? 'Workshops' : col.titre]}</p>
+            <h2>{col.nom}</h2>
+            <p class="texte-doux">{col.description}</p>
 
             {creneaux.length > 0 && (
               <div class="planning">
                 <h3 class="planning__titre">Planning</h3>
                 <table>
-                  <caption class="visuellement-cache">Créneaux de {col.titre}</caption>
+                  <caption class="visuellement-cache">Créneaux de {col.nom}</caption>
                   <tbody>
                     {creneaux.map((c) => (
                       <tr>
@@ -68,7 +67,7 @@ const colonnes = [
               </div>
             )}
 
-            {col.id === 'workshops' && (
+            {creneaux.length === 0 && (
               <p>
                 <a href="/evenements" class="lien-fleche">Voir les prochains workshops</a>
               </p>
@@ -84,16 +83,16 @@ const colonnes = [
   </div>
 
   <section class="section conteneur tarifs" aria-labelledby="titre-tarifs">
-    <h2 id="titre-tarifs">{tarifs.titre}</h2>
-    <ul>
-      {tarifs.lignes.map((ligne) => <li><TexteRiche texte={ligne} /></li>)}
-    </ul>
+    <h2 id="titre-tarifs">{page.tarifsTitre}</h2>
+    <div class="tarifs__texte">
+      <TexteSanity blocs={page.tarifs} />
+    </div>
   </section>
 
   <section class="section conteneur philosophie" aria-label="La pratique">
     <ul class="philosophie__liste" data-apparition="fondu">
       {
-        lesCours.philosophie.map((ligne) => (
+        (page.philosophie ?? []).map((ligne) => (
           <li>
             <Image src={puce} alt="" class="philosophie__puce" aria-hidden="true" />
             {ligne}
@@ -102,16 +101,16 @@ const colonnes = [
       }
     </ul>
     <div class="philosophie__visuel">
-      <Image src={photoPhilo} alt="Mathilde en posture d’étirement sur son tapis" widths={[700, 1100]} sizes="(max-width: 64rem) 100vw, 50vw" />
+      <PhotoSanity photo={page.philosophiePhoto} largeurs={[700, 1100]} ratio={576 / 760} sizes="(max-width: 64rem) 100vw, 50vw" />
       <Image src={mouvement} alt="" class="philosophie__motif" data-parallaxe="1" data-ordi-seulement aria-hidden="true" />
     </div>
   </section>
 
   <section class="conteneur valeurs">
     <div class="valeurs__colonnes">
-      {lesCours.colonnes.map((texte) => <p class="texte-doux">{texte}</p>)}
+      {(page.colonnes ?? []).map((texte) => <p class="texte-doux">{texte}</p>)}
     </div>
-    <p class="valeurs__mantra">{lesCours.mantra}</p>
+    <p class="valeurs__mantra">{page.mantra}</p>
   </section>
 </Base>
 
@@ -202,12 +201,10 @@ const colonnes = [
     font-size: clamp(2rem, 1.5rem + 2vw, 3.25rem);
   }
 
-  .tarifs ul {
+  .tarifs__texte {
     display: flex;
     flex-direction: column;
     gap: var(--espace-4);
-    padding: 0;
-    list-style: none;
     color: var(--couleur-texte-doux);
     font-size: var(--texte-chapo);
   }

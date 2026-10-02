@@ -16,6 +16,8 @@ La règle est simple et évite tout problème de synchronisation :
 
 Ne mets jamais les cours dans Sanity : la capacité et les réservations doivent vivre au même endroit, sinon tu passeras ton temps à synchroniser deux sources de vérité.
 
+> **Implémentation** : projet Sanity `vl8aocgi` (organisation « Yogside »), jeu de données `production` public en lecture. Studio dans `studio/`, en ligne sur https://yogside.sanity.studio. Une fiche unique par page (Accueil, Les cours, À propos, Événements, Réglages généraux). Les pages éditoriales sont rendues côté serveur avec un cache Vercel d'une minute : une publication apparaît sur le site en une à deux minutes, sans webhook ni reconstruction. Les horaires et les dates des workshops restent lus dans Supabase ; Sanity ne fournit que l'habillage (textes, photos). Import initial : `npm run import` dans `studio/`.
+
 ---
 
 ## 2. Modèle de données Supabase

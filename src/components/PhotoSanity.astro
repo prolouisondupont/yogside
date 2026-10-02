@@ -1,0 +1,21 @@
+---
+/** Photo venant de Sanity, en plusieurs tailles (le navigateur choisit la bonne). */
+import type { HTMLAttributes } from 'astro/types';
+import { attributsPhoto, type Photo } from '../lib/sanity';
+
+type Props = {
+  photo: Photo | undefined;
+  largeurs?: number[];
+  sizes?: string;
+  /** Hauteur / largeur forcée (recadrage autour du point d'intérêt choisi dans Sanity) */
+  ratio?: number;
+  /** Texte alternatif si la photo n'en a pas */
+  alt?: string;
+  loading?: 'lazy' | 'eager';
+} & Omit<HTMLAttributes<'img'>, 'src' | 'srcset' | 'width' | 'height' | 'alt' | 'loading'>;
+
+const { photo, largeurs = [400, 800, 1200], sizes = '100vw', ratio, alt, loading = 'lazy', ...attributs } = Astro.props;
+const a = photo?.asset ? attributsPhoto(photo, largeurs, ratio) : null;
+---
+
+{a && <img {...a} alt={a.alt || alt || ''} sizes={sizes} loading={loading} decoding="async" {...attributs} />}
