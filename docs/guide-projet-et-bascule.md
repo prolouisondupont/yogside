@@ -78,6 +78,10 @@ Le nouveau site tourne déjà sur une **adresse de test Vercel** : `https://yogs
 Il est volontairement **non indexé** par Google (voir §8.3) et ses mails peuvent être
 **redirigés vers une adresse de test** (variable `EMAIL_REDIRECTION`).
 
+> **État à jour** : ce guide décrit le projet à la date de sa rédaction. Ce qui a été fait
+> depuis, la checklist de bascule cochée et les questions en suspens sont dans
+> `docs/avancement.md`, mis à jour à chaque session.
+
 ---
 
 ## 3. Les outils et les comptes

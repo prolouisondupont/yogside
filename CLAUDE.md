@@ -124,6 +124,19 @@ et les jauges dans l'espace de gestion, voit la liste des inscrits, annule une s
 crée un workshop, déclare ses périodes off, met à jour ses créneaux une fois par an. Elle n'est pas technicienne —
 tout ce qu'elle doit faire au quotidien passe par une interface, jamais par Supabase.
 
+## Suivi de l'avancement
+
+**À la fin de chaque session de travail, avant le dernier commit, mets à jour
+`docs/avancement.md`.** Il a trois parties :
+- **Fait** : la date du jour, puis une ligne par changement avec les fichiers concernés ;
+- **Reste à faire** : la checklist de bascule (§9 de `docs/guide-projet-et-bascule.md`),
+  à cocher au fur et à mesure ;
+- **Blocages / questions ouvertes** : ce qui attend une information de Mathilde ou une
+  décision de Louison (retirer une ligne quand elle est résolue).
+
+Jamais de clé, de mot de passe ni de secret dans ce fichier : le nom d'une variable
+oui, sa valeur non.
+
 ## Conventions de code
 
 - Code, commentaires et messages de commit **en français**
