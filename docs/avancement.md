@@ -14,6 +14,11 @@ dernier commit. Le contexte complet et le plan de bascule sont dans
 Le plus récent en haut. Une ligne par changement, avec les fichiers concernés.
 
 ### 2026-11-27
+- **Décisions de bascule** : l'hébergement o2switch du WordPress expire → bascule accélérée, mise en ligne sur yogside.com aujourd'hui. Option A pour les réservations WordPress : pas d'import, les 8 réservations restantes (ce soir et demain) ont été transmises à Mathilde. Base WordPress sauvegardée. **Plus de retour arrière possible vers le WordPress** (le §9.6 du guide ne s'applique plus).
+- Branche `bascule` poussée, **non fusionnée** : `noindex` retiré du site public (gardé dans l'admin), `robots.txt` ouvert sauf `/admin`, `/mon-espace`, `/reserver`, `/annuler`, `/connexion`, `/auth` — `src/layouts/Base.astro`, `public/robots.txt`. À fusionner par Louison au moment de la bascule.
+- Redirections 301 des anciennes adresses WordPress, avec et sans slash final (34 règles) ; `/cours` et `/a-propos` non redirigées — `vercel.json`
+- Page 404 (titre, phrase, liens vers l'accueil et le planning) — `src/pages/404.astro`
+- Page `/styleguide` supprimée (aucun lien n'y menait) — `src/pages/styleguide.astro`
 - Journal d'avancement créé ; règle de mise à jour ajoutée au CLAUDE.md — `docs/avancement.md`, `CLAUDE.md`, `docs/guide-projet-et-bascule.md`
 - Guide du projet et plan de bascule WordPress → nouveau site, pour se faire aider par Claude chat — `docs/guide-projet-et-bascule.md`
 
@@ -45,11 +50,11 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 
 ### Préparation — §9.1 (sans impact sur le site actuel)
 - [ ] Récupérer auprès de Mathilde : accès Brevo, accès Instagram, informations des mentions légales, confirmation du renouvellement du domaine
-- [ ] Redirections des anciennes adresses WordPress (§9.4)
+- [x] Redirections des anciennes adresses WordPress (§9.4) — 27/11, vérifiées sur yogside.vercel.app
 - [ ] Page mentions légales
-- [ ] Page 404 (`src/pages/404.astro`)
-- [ ] Plan du site (sitemap), sans `/admin`, `/mon-espace`, `/reserver`, `/annuler`, `/styleguide`
-- [ ] Retirer ou protéger `/styleguide`
+- [x] Page 404 (`src/pages/404.astro`) — 27/11
+- [ ] Plan du site (sitemap), sans `/admin`, `/mon-espace`, `/reserver`, `/annuler`, `/connexion`, `/auth`
+- [x] Retirer ou protéger `/styleguide` — supprimée le 27/11
 - [ ] Brancher le flux Instagram @yogside_fr
 - [ ] Comparer yogside.com et le nouveau site page par page ; mettre à jour workshops, horaires et tarifs si besoin
 - [ ] Mettre `BREVO_API_KEY` et `BREVO_LISTE_ID` dans Vercel, tester l'inscription newsletter
@@ -58,10 +63,11 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 - [ ] Faire faire un tour à Mathilde : un texte modifié dans Sanity, le planning et une séance dans `/admin`
 
 ### Réservations en cours sur WordPress — §9.2
-- [ ] Compter avec Mathilde les réservations futures dans WordPress
-- [ ] Choisir : élèves qui réservent de nouveau (option A) ou reprise des réservations (option B)
-- [ ] Si option B : script d'import ou bouton « ajouter un inscrit » dans `/admin`
-- [ ] Choisir la date de bascule et prévenir les élèves
+- [x] Compter avec Mathilde les réservations futures dans WordPress — 8 réservations (27 et 28/11), transmises à Mathilde
+- [x] Choisir : élèves qui réservent de nouveau (option A) ou reprise des réservations (option B) — **option A**, décidée le 27/11
+- [x] ~~Si option B : script d'import ou bouton « ajouter un inscrit » dans `/admin`~~ — sans objet (option A)
+- [x] Choisir la date de bascule — 27/11/2026, accélérée par l'expiration d'o2switch
+- [ ] Prévenir les élèves qu'on réserve désormais sur le nouveau site (newsletter, Instagram, en cours)
 
 ### Recette sur yogside.vercel.app — §9.3 (avec `EMAIL_REDIRECTION` rempli)
 
@@ -97,12 +103,16 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 - [ ] Mentions légales présentes
 
 ### Jour J — §9.5
-- [ ] La veille : TTL de `@` et `www` baissé chez OVH ; noter les valeurs actuelles de l'A et du CNAME `www`
+
+> Bascule accélérée le 27/11 : pas de retour arrière possible vers le WordPress. Le TTL
+> n'a pas pu être baissé la veille ; noter quand même les anciennes valeurs DNS.
+
+- [ ] Noter les valeurs actuelles de l'A de `@` et du CNAME `www` chez OVH (baisser le TTL si c'est encore utile)
 - [ ] Vercel : domaines `yogside.com` et `www.yogside.com` ajoutés
 - [ ] Vercel (production) : `PUBLIC_SITE_URL` = `https://yogside.com`, `EMAIL_REDIRECTION` vide, autres variables vérifiées
-- [ ] Code : `noindex` retiré de `src/layouts/Base.astro` (garder celui d'`Admin.astro`), `public/robots.txt` ouvert avec le sitemap
+- [ ] Code : fusionner la branche `bascule` dans `main` (prête depuis le 27/11 : `noindex` retiré de `Base.astro`, gardé dans `Admin.astro` ; `robots.txt` ouvert). Ajouter la ligne `Sitemap:` au `robots.txt` quand le sitemap existera.
 - [ ] Sanity : `npx sanity cors add https://yogside.com` (et `www` si utilisé) dans `studio/`
-- [ ] WordPress : réservations fermées ou message vers le nouveau site
+- [x] ~~WordPress : réservations fermées ou message vers le nouveau site~~ — sans objet : l'hébergement expire, les dernières réservations sont transmises à Mathilde
 - [ ] OVH : A de `@` et CNAME `www` remplacés par les valeurs Vercel — ne toucher ni aux MX, ni au SPF ou au DMARC, ni aux enregistrements Resend
 - [ ] Vercel affiche « Valid Configuration », HTTPS actif
 - [ ] Vérifications : nouveau site en HTTPS, anciennes adresses redirigées, une vraie réservation reçue puis annulée, un mail reçu sur `info@yogside.com`
@@ -111,7 +121,8 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 - [ ] Semaine 1 : surveiller les journaux Vercel et les envois Resend ; rappel quotidien et récap du dimanche partis
 - [ ] Google Search Console : domaine validé, sitemap soumis, erreurs 404 suivies
 - [ ] Annonce du nouveau site (newsletter, Instagram)
-- [ ] Sauvegarde complète du WordPress chez o2switch, puis résiliation d'o2switch (garder OVH)
+- [x] Sauvegarde complète du WordPress chez o2switch — base sauvegardée le 27/11
+- [x] ~~Résiliation d'o2switch~~ — sans objet : l'hébergement expire de lui-même. **Garder OVH** (domaine, DNS, boîte mail).
 - [ ] Mode d'emploi court pour Mathilde (Sanity + `/admin`)
 
 ---
@@ -123,13 +134,9 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 - **Instagram** : accès au compte @yogside_fr pour brancher le flux (API officielle ou service type Behold.so).
 - **Mentions légales** : nom, statut, SIRET, adresse ou email de contact — rien ne doit être inventé.
 - **Domaine** : yogside.com expirait le 11/10/2026 — renouvellement à confirmer dans OVH.
-- **Réservations WordPress** : combien de réservations futures, et quelle option de reprise (§9.2).
-- **Date de bascule** : à fixer ensemble, idéalement en période calme.
 - **Contenus** : nouveaux workshops, horaires ou tarifs annoncés depuis le relevé du 01/10/2026 ?
 
 ### À trancher par Louison
-- Redirection de `/contact/` : vers `/a-propos` ou vers `/` ?
-- Redirection de `/cours-individuelle/` : vers `/cours` (tarifs, « contactez-moi pour un devis ») — à confirmer.
+- **Recette** : la bascule a lieu aujourd'hui et le retour au WordPress est impossible. Quels parcours du §9.3 faire avant de changer le DNS ? Au minimum : une réservation complète avec les mails, une annulation, la connexion à `/admin`.
 - `www.yogside.com` ou `yogside.com` comme adresse principale.
 - Formule Vercel : la formule gratuite (Hobby) est réservée à un usage non commercial — passer en Pro ?
-- `/styleguide` : supprimer la page ou la réserver à l'admin.

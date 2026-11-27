@@ -470,6 +470,10 @@ pour surveiller :
 
 ### 9.6 Plan de retour arrière
 
+> ⚠️ **Caduc depuis le 27/11/2026** : l'hébergement o2switch expire. Plus aucun retour
+> au WordPress n'est possible (voir `docs/avancement.md`). Le texte ci-dessous ne sert
+> plus qu'à titre d'historique.
+
 Si quelque chose ne va pas après le changement de DNS : chez OVH, remettre l'**A** de `@`
 sur `109.234.164.55` et le CNAME `www` sur son ancienne valeur (**la noter avant de la
 modifier**). Le WordPress, toujours hébergé chez o2switch, reprend la main dès la
