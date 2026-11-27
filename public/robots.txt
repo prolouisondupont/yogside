@@ -1,3 +1,9 @@
-# Site de test — aucune indexation avant la bascule
+# Site en production : indexation autorisée, sauf les pages privées ou transactionnelles
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /mon-espace
+Disallow: /reserver
+Disallow: /annuler
+Disallow: /connexion
+Disallow: /auth
