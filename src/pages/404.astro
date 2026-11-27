@@ -1,0 +1,36 @@
+---
+// Page d'erreur : adresse inconnue (ancien lien, faute de frappe…).
+// Les anciennes adresses du site WordPress sont redirigées dans vercel.json.
+import Base from '../layouts/Base.astro';
+import Bouton from '../components/Bouton.astro';
+---
+
+<Base titre="Page introuvable — Yogside" basDePage={false}>
+  <section class="conteneur introuvable">
+    <h1>Cette page n’existe pas</h1>
+    <p class="texte-doux">
+      Le lien que vous avez suivi est peut-être ancien : le site a fait peau neuve. Les cours,
+      les horaires et les réservations sont toujours là.
+    </p>
+    <div class="introuvable__liens">
+      <Bouton href="/">Retour à l’accueil</Bouton>
+      <Bouton href="/planning" variante="plein">Voir le planning</Bouton>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .introuvable {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espace-5);
+    max-width: calc(36rem + 2 * var(--marge-laterale));
+    padding-block: var(--espace-9) var(--espace-section);
+  }
+
+  .introuvable__liens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espace-4);
+  }
+</style>
