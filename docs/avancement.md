@@ -14,6 +14,7 @@ dernier commit. Le contexte complet et le plan de bascule sont dans
 Le plus récent en haut. Une ligne par changement, avec les fichiers concernés.
 
 ### 2026-11-27
+- Branche `bascule` fusionnée dans `main` (PR #1) : site public indexable, déploiement Vercel vérifié (`robots.txt`, absence de `noindex`, `/admin` toujours protégé) — `src/layouts/Base.astro`, `public/robots.txt`
 - **Décisions de bascule** : l'hébergement o2switch du WordPress expire → bascule accélérée, mise en ligne sur yogside.com aujourd'hui. Option A pour les réservations WordPress : pas d'import, les 8 réservations restantes (ce soir et demain) ont été transmises à Mathilde. Base WordPress sauvegardée. **Plus de retour arrière possible vers le WordPress** (le §9.6 du guide ne s'applique plus).
 - Branche `bascule` poussée, **non fusionnée** : `noindex` retiré du site public (gardé dans l'admin), `robots.txt` ouvert sauf `/admin`, `/mon-espace`, `/reserver`, `/annuler`, `/connexion`, `/auth` — `src/layouts/Base.astro`, `public/robots.txt`. À fusionner par Louison au moment de la bascule.
 - Redirections 301 des anciennes adresses WordPress, avec et sans slash final (34 règles) ; `/cours` et `/a-propos` non redirigées — `vercel.json`
@@ -110,8 +111,8 @@ Checklist de bascule (§9 du guide). Cocher au fur et à mesure.
 - [ ] Noter les valeurs actuelles de l'A de `@` et du CNAME `www` chez OVH (baisser le TTL si c'est encore utile)
 - [ ] Vercel : domaines `yogside.com` et `www.yogside.com` ajoutés
 - [ ] Vercel (production) : `PUBLIC_SITE_URL` = `https://yogside.com`, `EMAIL_REDIRECTION` vide, autres variables vérifiées
-- [ ] Code : fusionner la branche `bascule` dans `main` (prête depuis le 27/11 : `noindex` retiré de `Base.astro`, gardé dans `Admin.astro` ; `robots.txt` ouvert). Ajouter la ligne `Sitemap:` au `robots.txt` quand le sitemap existera.
-- [ ] Sanity : `npx sanity cors add https://yogside.com` (et `www` si utilisé) dans `studio/`
+- [x] Code : branche `bascule` fusionnée dans `main` le 27/11 (PR #1). Déploiement Vercel prêt, `robots.txt` ouvert en ligne, plus de `noindex` sur le site public. Ajouter la ligne `Sitemap:` au `robots.txt` quand le sitemap existera.
+- [x] ~~Sanity : `npx sanity cors add https://yogside.com`~~ — inutile : le site lit Sanity uniquement côté serveur, et les images viennent du CDN Sanity, qui ne contrôle pas le CORS. À ajouter seulement si un script navigateur interroge un jour Sanity.
 - [x] ~~WordPress : réservations fermées ou message vers le nouveau site~~ — sans objet : l'hébergement expire, les dernières réservations sont transmises à Mathilde
 - [ ] OVH : A de `@` et CNAME `www` remplacés par les valeurs Vercel — ne toucher ni aux MX, ni au SPF ou au DMARC, ni aux enregistrements Resend
 - [ ] Vercel affiche « Valid Configuration », HTTPS actif
